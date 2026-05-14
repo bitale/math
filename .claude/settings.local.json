@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(rustup --version)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(& \"$env:TEMP\\\\rustup-init.exe\" -y --default-toolchain stable --profile default 2>&1 | Out-String)",
+      "PowerShell(rustc *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(winget *)",
+      "PowerShell($installer = \"$env:TEMP\\\\vs_BuildTools.exe\"; $args = @\\('--quiet','--wait','--norestart','--nocache','--add','Microsoft.VisualStudio.Workload.VCTools','--add','Microsoft.VisualStudio.Component.VC.Tools.x86.x64','--add','Microsoft.VisualStudio.Component.Windows11SDK.22621','--includeRecommended'\\); $p = Start-Process -FilePath $installer -ArgumentList $args -PassThru; \"Started PID=$\\($p.Id\\)\"; $p.WaitForExit\\(\\); \"ExitCode=$\\($p.ExitCode\\)\")",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\user\\\\WebstormProjects\\\\demo\\\\index.html\")",
+      "WebFetch(domain:en.wikipedia.org)",
+      "PowerShell(curl.exe -s -o NUL -w \"%{http_code} %{content_type} %{size_download}B`n\" -A \"Mozilla/5.0\" \"https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Korean_stew_dish_-_Kimchi-jjigae_Kimchi_Stew_2019_%2801%29.jpg/400px-Korean_stew_dish_-_Kimchi-jjigae_Kimchi_Stew_2019_%2801%29.jpg\")",
+      "PowerShell(curl.exe -s -o NUL -w \"%{http_code} %{content_type} %{size_download}B`n\" -A \"Mozilla/5.0\" \"https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/%22Amai-Yuwaku%22_Special_Loin_Pork_Cutlet1.jpg/400px-%22Amai-Yuwaku%22_Special_Loin_Pork_Cutlet1.jpg\")",
+      "PowerShell(curl.exe -s -o NUL -w \"%{http_code} %{content_type} %{size_download}B`n\" -A \"Mozilla/5.0\" \"https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Sushi_platter.jpg/400px-Sushi_platter.jpg\")",
+      "PowerShell(curl.exe -s -o NUL -w \"%{http_code} %{content_type} %{size_download}B`n\" -A \"Mozilla/5.0\" \"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/RedDot_Burger.jpg/400px-RedDot_Burger.jpg\")",
+      "PowerShell(curl.exe -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0 Safari/537.36\" \"https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Sushi_platter.jpg/400px-Sushi_platter.jpg\" 2>&1 | Select-Object -First 30)",
+      "WebFetch(domain:w.wiki)",
+      "WebFetch(domain:www.mediawiki.org)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(taskkill /F /IM node.exe /FI \"WINDOWTITLE eq *vite*\")",
+      "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 4173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }')"
+    ]
+  }
+}

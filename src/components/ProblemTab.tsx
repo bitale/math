@@ -1,0 +1,234 @@
+import { FC, useState } from "react";
+import { Lesson, Problem, WrongNoteEntry } from "../types";
+import HintBox from "./HintBox";
+import AnswerFeedback from "./AnswerFeedback";
+import MathText from "./MathText";
+import { judgeAnswer } from "../utils/judge";
+import {
+  addWrongNote,
+  removeWrongNote,
+  setProblemResult,
+} from "../utils/storage";
+
+interface Props {
+  lesson: Lesson;
+  onAllSolved?: () => void;
+}
+
+interface State {
+  userAnswer: string;
+  revealedHints: number;
+  status: "idle" | "correct" | "wrong";
+  judgeMessage: string;
+}
+
+const initialState: State = {
+  userAnswer: "",
+  revealedHints: 0,
+  status: "idle",
+  judgeMessage: "",
+};
+
+export const ProblemTab: FC<Props> = ({ lesson, onAllSolved }) => {
+  const [index, setIndex] = useState(0);
+  const [state, setState] = useState<State>(initialState);
+
+  const problem: Problem | undefined = lesson.problems[index];
+
+  if (!problem) {
+    return (
+      <div className="card p-6 text-center">
+        <div className="text-lg font-bold text-navy-900">
+          이 단원의 모든 문제를 풀었습니다 🎉
+        </div>
+        <p className="mt-2 text-sm text-navy-700 leading-7">
+          요약 탭에서 핵심 내용을 정리한 뒤, 다음 단원으로 넘어가 보세요.
+        </p>
+      </div>
+    );
+  }
+
+  const submit = () => {
+    const result = judgeAnswer(problem, state.userAnswer);
+    setProblemResult(problem.id, result.correct);
+
+    if (result.correct) {
+      removeWrongNote(problem.id);
+    } else {
+      const entry: WrongNoteEntry = {
+        lessonId: lesson.id,
+        problemId: problem.id,
+        question: problem.question,
+        userAnswer: state.userAnswer,
+        correctAnswer: problem.answer,
+        explanation: problem.explanation,
+        wrongAnalysis: problem.wrongAnalysis,
+        timestamp: Date.now(),
+      };
+      addWrongNote(entry);
+    }
+
+    setState((prev) => ({
+      ...prev,
+      status: result.correct ? "correct" : "wrong",
+      judgeMessage: result.reason,
+    }));
+  };
+
+  const nextProblem = () => {
+    if (index + 1 < lesson.problems.length) {
+      setIndex(index + 1);
+      setState(initialState);
+    } else {
+      onAllSolved?.();
+      setIndex(index + 1);
+      setState(initialState);
+    }
+  };
+
+  const revealHint = () => {
+    setState((prev) => ({
+      ...prev,
+      revealedHints: Math.min(prev.revealedHints + 1, problem.hints.length),
+    }));
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold text-navy-600">
+          문제 {index + 1} / {lesson.problems.length}
+        </div>
+        <div className="chip bg-navy-50 text-navy-700">
+          난이도{" "}
+          {"★".repeat(problem.difficulty) + "☆".repeat(3 - problem.difficulty)}
+        </div>
+      </div>
+
+      <article className="card p-5">
+        <div className="text-[15px] md:text-base text-navy-900 leading-8">
+          <MathText>{problem.question}</MathText>
+        </div>
+
+        <div className="mt-4">
+          {problem.type === "choice" ? (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {problem.choices?.map((choice, idx) => {
+                const selected = state.userAnswer === choice;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() =>
+                      setState((prev) => ({ ...prev, userAnswer: choice }))
+                    }
+                    disabled={state.status !== "idle"}
+                    className={`p-3 rounded-xl border text-left text-sm transition ${
+                      selected
+                        ? "border-navy-500 bg-navy-50 text-navy-900"
+                        : "border-navy-100 hover:bg-navy-50 text-navy-800"
+                    } disabled:opacity-70 disabled:cursor-not-allowed`}
+                  >
+                    <span className="font-semibold mr-2 text-navy-600">
+                      {String.fromCharCode(65 + idx)}.
+                    </span>
+                    <MathText>{choice}</MathText>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <input
+              type="text"
+              inputMode={problem.type === "number" ? "decimal" : "text"}
+              value={state.userAnswer}
+              onChange={(e) =>
+                setState((prev) => ({ ...prev, userAnswer: e.target.value }))
+              }
+              disabled={state.status !== "idle"}
+              placeholder={
+                problem.type === "number"
+                  ? "숫자로 답을 입력하세요 (예: 3.14)"
+                  : "답을 입력하세요"
+              }
+              className="w-full rounded-xl border border-navy-200 px-4 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-navy-300 disabled:bg-navy-50"
+            />
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {state.status === "idle" ? (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={submit}
+                disabled={state.userAnswer.trim() === ""}
+              >
+                정답 제출
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={revealHint}
+                disabled={state.revealedHints >= problem.hints.length}
+              >
+                힌트 보기 ({state.revealedHints}/{problem.hints.length})
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={nextProblem}
+            >
+              {index + 1 < lesson.problems.length
+                ? "다음 문제"
+                : "문제 풀이 완료"}
+            </button>
+          )}
+        </div>
+      </article>
+
+      <HintBox
+        hints={problem.hints}
+        revealed={state.revealedHints}
+        onReveal={revealHint}
+      />
+
+      <AnswerFeedback status={state.status} message={state.judgeMessage} />
+
+      {state.status !== "idle" && (
+        <div className="space-y-4">
+          <div className="card p-5">
+            <div className="text-xs font-semibold text-navy-700">해설</div>
+            <div className="mt-2 text-[15px] text-navy-800 leading-8">
+              <MathText>{problem.explanation}</MathText>
+            </div>
+            <div className="mt-3 card p-3 bg-emerald-50 border-emerald-200">
+              <span className="text-xs font-semibold text-emerald-800">
+                정답
+              </span>
+              <span className="ml-2 font-bold text-emerald-900">
+                <MathText>{problem.answer}</MathText>
+              </span>
+            </div>
+          </div>
+
+          {state.status === "wrong" && (
+            <div className="card p-5 bg-rose-50/60 border-rose-200">
+              <div className="text-xs font-semibold text-rose-800">
+                오답 분석
+              </div>
+              <div className="mt-2 text-[15px] text-rose-900 leading-8">
+                <MathText>{problem.wrongAnalysis}</MathText>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProblemTab;
