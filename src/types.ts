@@ -51,7 +51,21 @@ export interface WrongNoteEntry {
   timestamp: number;
 }
 
+export type SubjectId = "analysis" | "set-theory";
+
+export interface SubjectConfig {
+  id: SubjectId;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: string;
+  color: string;
+  lessons: Lesson[];
+  flow: string[];
+}
+
 export type Route =
+  | { name: "select-subject" }
   | { name: "home" }
   | { name: "curriculum" }
   | { name: "lesson"; lessonId: number }

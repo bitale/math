@@ -4,35 +4,62 @@ import HomePage from "./components/HomePage";
 import CurriculumPage from "./components/CurriculumPage";
 import LessonPage from "./components/LessonPage";
 import WrongNotePage from "./components/WrongNotePage";
-import { lessons } from "./data/lessons";
-import { Route, WrongNoteEntry } from "./types";
+import SubjectSelectPage from "./components/SubjectSelectPage";
+import { subjects, subjectList } from "./data/subjects";
+import { Route, SubjectConfig, SubjectId, WrongNoteEntry } from "./types";
 import {
   getCompletedLessons,
   getLastLessonId,
+  getLastSubject,
   getWrongNotes,
   removeWrongNote,
+  setLastSubject,
   setLessonCompleted,
+  setStorageSubject,
 } from "./utils/storage";
 
 export default function App() {
-  const [route, setRoute] = useState<Route>({ name: "home" });
+  const [subjectId, setSubjectId] = useState<SubjectId | null>(
+    getLastSubject
+  );
+  const [route, setRoute] = useState<Route>({ name: "select-subject" });
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [lastLessonId, setLastLesson] = useState<number | null>(null);
   const [wrongNotes, setWrongNotes] = useState<WrongNoteEntry[]>([]);
 
-  useEffect(() => {
+  const subject: SubjectConfig | null = subjectId
+    ? subjects[subjectId]
+    : null;
+
+  const syncState = () => {
     setCompletedIds(getCompletedLessons());
     setLastLesson(getLastLessonId());
     setWrongNotes(getWrongNotes());
-  }, []);
+  };
 
-  const refreshWrongNotes = () => setWrongNotes(getWrongNotes());
+  useEffect(() => {
+    if (subjectId) {
+      setStorageSubject(subjectId);
+      syncState();
+    }
+  }, [subjectId]);
+
+  const selectSubject = (id: string) => {
+    const sid = id as SubjectId;
+    setSubjectId(sid);
+    setLastSubject(sid);
+    setStorageSubject(sid);
+    setRoute({ name: "home" });
+    setTimeout(syncState, 0);
+  };
 
   const navigate = (next: Route) => {
     setRoute(next);
-    refreshWrongNotes();
-    setCompletedIds(getCompletedLessons());
-    setLastLesson(getLastLessonId());
+    syncState();
+  };
+
+  const goToSubjectSelect = () => {
+    setRoute({ name: "select-subject" });
   };
 
   const markCompleted = (lessonId: number) => {
@@ -40,11 +67,40 @@ export default function App() {
     setCompletedIds(getCompletedLessons());
   };
 
+  // 주제 선택 화면
+  if (route.name === "select-subject" || !subject) {
+    return (
+      <div className="min-h-screen">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-navy-100">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 h-14 flex items-center">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-navy-700 to-purple-600 grid place-items-center text-white font-bold text-sm">
+                M
+              </div>
+              <span className="font-bold text-navy-900">수학 학습</span>
+            </div>
+          </div>
+        </header>
+        <main>
+          <SubjectSelectPage
+            subjects={subjectList}
+            onSelect={selectSubject}
+          />
+        </main>
+        <footer className="border-t border-navy-100 mt-16 py-8 text-center text-xs text-navy-500">
+          © 수학 학습용 데모 앱
+        </footer>
+      </div>
+    );
+  }
+
+  const lessons = subject.lessons;
+
   let content: JSX.Element;
   if (route.name === "home") {
     content = (
       <HomePage
-        lessons={lessons}
+        subject={subject}
         completedIds={completedIds}
         lastLessonId={lastLessonId}
         onNavigate={navigate}
@@ -65,7 +121,7 @@ export default function App() {
         onNavigate={navigate}
         onRemove={(pid) => {
           removeWrongNote(pid);
-          refreshWrongNotes();
+          setWrongNotes(getWrongNotes());
         }}
       />
     );
@@ -103,12 +159,14 @@ export default function App() {
     <div className="min-h-screen">
       <Header
         route={route}
+        subject={subject}
         onNavigate={navigate}
+        onSubjectSelect={goToSubjectSelect}
         wrongCount={wrongNotes.length}
       />
       <main>{content}</main>
       <footer className="border-t border-navy-100 mt-16 py-8 text-center text-xs text-navy-500">
-        © 변화율에서 편미분방정식까지 — 학습용 데모 앱
+        © {subject.title} — 학습용 데모 앱
       </footer>
     </div>
   );

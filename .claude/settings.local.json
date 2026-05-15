@@ -23,7 +23,25 @@
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
       "Bash(taskkill /F /IM node.exe /FI \"WINDOWTITLE eq *vite*\")",
-      "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 4173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }')"
+      "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 4173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }')",
+      "Bash(grep \"^ *{$\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)",
+      "Bash(grep -E \"^  \\\\{$\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)",
+      "Bash(grep -E \"^  \\\\},$\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)",
+      "Bash(node -e ':*)",
+      "Read(//tmp/**)",
+      "Bash(./node_modules/.bin/tsc --noEmit --strict --target es2020 --module esnext --moduleResolution node /tmp/check.ts)",
+      "Bash(ls \"C:\\\\Users\\\\USER\\\\Desktop\\\\project\\\\set-theory\\\\node_modules\\\\.bin\\\\tsc\"*)",
+      "Bash(ls node_modules/.bin/tsc*)",
+      "Bash(node:*)",
+      "Bash(grep -n \"^  {$\" \"C:\\\\Users\\\\USER\\\\Desktop\\\\project\\\\math\\\\src\\\\data\\\\lessons.ts\")",
+      "Bash(grep -A 3 \"^  {$\" \"C:\\\\Users\\\\USER\\\\Desktop\\\\project\\\\math\\\\src\\\\data\\\\lessons.ts\")",
+      "Bash(git checkout:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(python -c ':*)",
+      "Bash(npx tsx -e ':*)",
+      "Bash(grep \"\\\\\"id\\\\\": [0-9]\\\\{1,2\\\\},\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)",
+      "Bash(grep -n \"\\\\\"title\\\\\":\\\\|\\\\\"id\\\\\": [0-9]\\\\{1,2\\\\},\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)",
+      "Bash(grep -n \"\\\\\"id\\\\\": [0-9]\\\\{1,2\\\\},\" /c/Users/USER/Desktop/project/math/src/data/lessons.ts)"
     ]
   }
 }

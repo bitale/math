@@ -1,63 +1,66 @@
-import { WrongNoteEntry } from "../types";
+import { SubjectId, WrongNoteEntry } from "../types";
 
-const KEYS = {
-  completedLessons: "mla.completedLessons",
-  lastLessonId: "mla.lastLessonId",
-  problemResults: "mla.problemResults",
-  wrongNote: "mla.wrongNote",
-} as const;
+let _prefix = "mla";
 
-function read<T>(key: string, fallback: T): T {
+export function setStorageSubject(subject: SubjectId): void {
+  _prefix = subject === "analysis" ? "mla" : "stla";
+}
+
+function key(name: string): string {
+  return `${_prefix}.${name}`;
+}
+
+function read<T>(k: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(k);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch (err) {
-    console.warn("저장소에서 값을 읽지 못했습니다:", key, err);
+    console.warn("저장소에서 값을 읽지 못했습니다:", k, err);
     return fallback;
   }
 }
 
-function write<T>(key: string, value: T): void {
+function write<T>(k: string, value: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(k, JSON.stringify(value));
   } catch (err) {
-    console.warn("저장소에 값을 저장하지 못했습니다:", key, err);
+    console.warn("저장소에 값을 저장하지 못했습니다:", k, err);
   }
 }
 
 export function getCompletedLessons(): number[] {
-  return read<number[]>(KEYS.completedLessons, []);
+  return read<number[]>(key("completedLessons"), []);
 }
 
 export function setLessonCompleted(lessonId: number): void {
   const list = new Set(getCompletedLessons());
   list.add(lessonId);
-  write(KEYS.completedLessons, Array.from(list));
+  write(key("completedLessons"), Array.from(list));
 }
 
 export function getLastLessonId(): number | null {
-  return read<number | null>(KEYS.lastLessonId, null);
+  return read<number | null>(key("lastLessonId"), null);
 }
 
 export function setLastLessonId(lessonId: number): void {
-  write(KEYS.lastLessonId, lessonId);
+  write(key("lastLessonId"), lessonId);
 }
 
 type ProblemResults = Record<string, boolean>;
 
 export function getProblemResults(): ProblemResults {
-  return read<ProblemResults>(KEYS.problemResults, {});
+  return read<ProblemResults>(key("problemResults"), {});
 }
 
 export function setProblemResult(problemId: string, correct: boolean): void {
   const results = getProblemResults();
   results[problemId] = correct;
-  write(KEYS.problemResults, results);
+  write(key("problemResults"), results);
 }
 
 export function getWrongNotes(): WrongNoteEntry[] {
-  return read<WrongNoteEntry[]>(KEYS.wrongNote, []);
+  return read<WrongNoteEntry[]>(key("wrongNote"), []);
 }
 
 export function addWrongNote(entry: WrongNoteEntry): void {
@@ -65,10 +68,19 @@ export function addWrongNote(entry: WrongNoteEntry): void {
     (item) => item.problemId !== entry.problemId
   );
   list.unshift(entry);
-  write(KEYS.wrongNote, list);
+  write(key("wrongNote"), list);
 }
 
 export function removeWrongNote(problemId: string): void {
   const list = getWrongNotes().filter((item) => item.problemId !== problemId);
-  write(KEYS.wrongNote, list);
+  write(key("wrongNote"), list);
+}
+
+// 마지막 선택한 주제 저장/복원
+export function getLastSubject(): SubjectId | null {
+  return read<SubjectId | null>("app.lastSubject", null);
+}
+
+export function setLastSubject(subject: SubjectId): void {
+  write("app.lastSubject", subject);
 }

@@ -101,9 +101,11 @@ export const MathText: FC<Props> = ({
   displayMode = false,
 }) => {
   const html = useMemo(() => {
-    if (displayMode) {
+    // displayMode이면서 $가 없는 순수 LaTeX → 그대로 display 렌더링
+    if (displayMode && !children.includes("$")) {
       return renderMath(children, true);
     }
+    // $가 섞여 있거나 일반 텍스트 → 토크나이저로 처리
     const segments = tokenize(children);
     return segments
       .map((seg) => {

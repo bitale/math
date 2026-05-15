@@ -1,21 +1,22 @@
 import { FC } from "react";
-import { Lesson, Route } from "../types";
+import { Route, SubjectConfig } from "../types";
 import ProgressBar from "./ProgressBar";
 import MathText from "./MathText";
 
 interface Props {
-  lessons: Lesson[];
+  subject: SubjectConfig;
   completedIds: number[];
   lastLessonId: number | null;
   onNavigate: (route: Route) => void;
 }
 
 export const HomePage: FC<Props> = ({
-  lessons,
+  subject,
   completedIds,
   lastLessonId,
   onNavigate,
 }) => {
+  const lessons = subject.lessons;
   const lastLesson = lessons.find((l) => l.id === lastLessonId);
   const startLessonId = lastLessonId ?? 1;
 
@@ -23,15 +24,14 @@ export const HomePage: FC<Props> = ({
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 md:py-16">
       <section className="text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
-          개념과 문제를 함께 배우는 수학 학습 앱
+          개념과 문제를 함께 배우는 {subject.subtitle} 학습 앱
         </div>
         <h1 className="mt-4 text-3xl md:text-5xl font-extrabold text-navy-900 leading-tight">
-          변화율에서 편미분방정식까지
+          {subject.title}
         </h1>
         <p className="mt-4 text-base md:text-lg text-navy-700 max-w-2xl mx-auto leading-8">
-          평균 변화율부터 편미분방정식까지, 32단계로 미적분의 큰 흐름을 차근차근
-          이해해보세요. 각 단원은 오늘의 질문 → 직관 → 공식 → 예제 → 문제 →
-          요약의 흐름으로 구성되어 있어요.
+          {subject.description} 각 단원은 오늘의 질문 → 직관 → 공식 → 예제 →
+          문제 → 요약의 흐름으로 구성되어 있어요.
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <button
@@ -66,8 +66,8 @@ export const HomePage: FC<Props> = ({
             />
           </div>
           <p className="mt-3 text-xs text-navy-600 leading-6">
-            한 단원당 보통 15~25분 정도 걸려요. 매일 한 단원씩만 풀어도 한 달이면
-            완주할 수 있어요.
+            한 단원당 보통 15~25분 정도 걸려요. 매일 한 단원씩만 풀어도 완주할 수
+            있어요.
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export const HomePage: FC<Props> = ({
           className="card p-5 text-left hover:shadow-md transition"
         >
           <div className="text-sm font-semibold text-navy-700">
-            📒 오답 노트 바로가기
+            오답 노트 바로가기
           </div>
           <p className="mt-2 text-sm text-navy-600 leading-6">
             틀린 문제는 자동으로 기록돼요. 시간이 지나서 다시 풀어보면 개념이
@@ -121,11 +121,10 @@ export const HomePage: FC<Props> = ({
           className="card p-5 text-left hover:shadow-md transition"
         >
           <div className="text-sm font-semibold text-navy-700">
-            🗺 커리큘럼 개요
+            커리큘럼 개요
           </div>
           <p className="mt-2 text-sm text-navy-600 leading-6">
-            함수와 그래프 → 변화율 → 미분 → 적분 → 급수 → 다변수 미적분 →
-            미분방정식 → 편미분방정식까지의 흐름을 한눈에 볼 수 있어요.
+            총 {lessons.length}단원의 전체 학습 흐름을 한눈에 볼 수 있어요.
           </p>
         </button>
       </section>
@@ -134,18 +133,9 @@ export const HomePage: FC<Props> = ({
         <h2 className="text-xl font-bold text-navy-900">학습 흐름</h2>
         <div className="mt-3 card p-5 prose-kor">
           <ol className="grid md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-navy-800 list-decimal pl-5">
-            <li>변화율 — 평균과 순간</li>
-            <li>극한과 연속</li>
-            <li>도함수와 미분 법칙</li>
-            <li>접선·근사·최적화 등 미분의 응용</li>
-            <li>부정·정적분과 미적분의 기본정리</li>
-            <li>치환·부분적분과 적분 활용</li>
-            <li>수열·급수, 테일러·푸리에</li>
-            <li>다변수 함수와 편미분, 그래디언트</li>
-            <li>중적분과 벡터장</li>
-            <li>1계·2계·시스템 미분방정식</li>
-            <li>편미분방정식 입문</li>
-            <li>열·파동·라플라스 방정식</li>
+            {subject.flow.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
           </ol>
         </div>
       </section>
