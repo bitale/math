@@ -1533,3 +1533,426 @@
   .finalizing,
   .loading { min-height: 100dvh; gap: 5px; }
 }
+
+/* ════════════ HP 배틀 / 콤보 / 선취 ════════════ */
+
+/* ── HP 바 (파이터 패널) ── */
+.hpRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.28rem;
+}
+
+.hpBar {
+  flex: 1;
+  min-width: 0;
+  height: 9px;
+  border-radius: 8px;
+  background: rgba(34, 49, 58, 0.12);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(34, 49, 58, 0.12);
+}
+
+.hpBarFill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+}
+
+.hpHigh { background: linear-gradient(90deg, var(--green), var(--primary)); }
+.hpMid { background: linear-gradient(90deg, var(--orange), var(--accent-yellow)); }
+.hpLow { background: linear-gradient(90deg, #d94f4f, #ff8a5b); animation: hpLowPulse 0.9s ease infinite; }
+.hpEmpty { background: rgba(34, 49, 58, 0.28); }
+
+@keyframes hpLowPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+}
+
+.hpNum {
+  flex: 0 0 auto;
+  min-width: 26px;
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ── 콤보 배지 ── */
+.comboChip {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  font-weight: 950;
+  color: #7a3a00;
+  background: linear-gradient(180deg, #ffe08a, #ffce5a);
+  border: 1px solid rgba(191, 123, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 7px;
+  line-height: 1.3;
+  animation: comboPop 0.32s ease;
+}
+
+.comboInline {
+  margin-left: 4px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  color: #8b5600;
+}
+
+@keyframes comboPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── 쓰러짐(KO) ── */
+.fighterDowned {
+  filter: grayscale(0.75);
+  opacity: 0.7;
+  border-color: rgba(217, 79, 79, 0.4) !important;
+  border-style: dashed !important;
+}
+
+.koTag {
+  margin-left: 5px;
+  font-size: 0.58rem;
+  font-weight: 950;
+  color: #fff;
+  background: var(--danger);
+  padding: 1px 5px;
+  border-radius: 5px;
+  vertical-align: middle;
+}
+
+/* ── 참가자 칩 HP / 쓰러짐 ── */
+.playerChip { position: relative; overflow: hidden; }
+
+.playerHpBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(34, 49, 58, 0.12);
+}
+
+.playerHpFill {
+  display: block;
+  height: 100%;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.playerDowned {
+  filter: grayscale(0.85);
+  opacity: 0.55;
+}
+
+/* ── 선취 토스트 ── */
+.correctToastFirst {
+  background: #fff7d9;
+  border-color: rgba(191, 123, 0, 0.4);
+}
+
+.firstStrikeTag {
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 0.62rem;
+  font-weight: 950;
+  color: #fff;
+  background: linear-gradient(180deg, #ffb347, #ff8a3d);
+  padding: 1px 7px;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
+/* ── 결과 배너 점수/피해 ── */
+.bannerDelta,
+.bannerDmg {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 0.92rem;
+  font-weight: 950;
+  padding: 3px 10px;
+  border-radius: 8px;
+  animation: deltaPop 0.4s ease;
+}
+
+.bannerDelta {
+  color: #7a3a00;
+  background: linear-gradient(180deg, #ffe08a, #ffce5a);
+}
+
+.bannerDelta em,
+.bannerDmg em {
+  font-style: normal;
+  margin-left: 4px;
+  font-size: 0.8rem;
+  opacity: 0.92;
+}
+
+.bannerDmg {
+  color: #fff;
+  background: linear-gradient(180deg, #ff6f6f, #d94f4f);
+}
+
+@keyframes deltaPop {
+  0% { transform: scale(0.5) translateY(-4px); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── 전투 로그 ── */
+.battleLog {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.battleLogFirst,
+.battleLogKo {
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 8px;
+  animation: logIn 0.34s ease backwards;
+}
+
+.battleLogFirst {
+  color: #7a3a00;
+  background: #fff3d2;
+  border: 1px solid rgba(191, 123, 0, 0.26);
+}
+
+.battleLogKo {
+  color: #fff;
+  background: linear-gradient(180deg, #ff6f6f, #d94f4f);
+  animation: logIn 0.34s ease backwards, koShake 0.4s ease 0.34s;
+}
+
+@keyframes logIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes koShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px) rotate(-1deg); }
+  75% { transform: translateX(3px) rotate(1deg); }
+}
+
+/* ── 실시간 순위 행: HP / 콤보 / 획득 점수 ── */
+.scoreMid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.scoreMid .scoreName {
+  flex: none;
+}
+
+.scoreHpBar {
+  display: block;
+  width: 100%;
+  height: 5px;
+  border-radius: 6px;
+  background: rgba(34, 49, 58, 0.12);
+  overflow: hidden;
+}
+
+.scoreHpFill {
+  display: block;
+  height: 100%;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scoreRowDowned {
+  opacity: 0.62;
+  filter: grayscale(0.4);
+}
+
+.scoreDelta {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  color: #1f8a5b;
+  animation: deltaPop 0.4s ease;
+}
+
+@media (max-width: 600px) {
+  .hpNum { min-width: 22px; font-size: 0.72rem; }
+  .bannerDelta, .bannerDmg { font-size: 0.8rem; padding: 2px 8px; }
+  .battleLogFirst, .battleLogKo { font-size: 0.68rem; padding: 3px 8px; }
+}
+
+/* ════════════ 팀 전투 ════════════ */
+
+.teamPanel {
+  min-width: 0;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius);
+  background: #fffdf7;
+  border: 2px solid rgba(22, 138, 143, 0.18);
+  box-shadow: 0 7px 0 rgba(22, 138, 143, 0.10), var(--shadow);
+  overflow: hidden;
+}
+
+.teamMine { border-color: rgba(22, 138, 143, 0.34); }
+.teamEnemy {
+  border-color: rgba(255, 107, 107, 0.30);
+  box-shadow: 0 7px 0 rgba(255, 107, 107, 0.12), var(--shadow);
+}
+
+.teamWiped {
+  filter: grayscale(0.7);
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.teamHead {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+  min-width: 0;
+}
+
+.teamName {
+  font-size: 0.82rem;
+  font-weight: 950;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.teamMineTag,
+.teamEnemyTag {
+  flex: 0 0 auto;
+  font-size: 0.55rem;
+  font-weight: 950;
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.teamMineTag { color: #07393d; background: #dff8f5; border: 1px solid rgba(22, 138, 143, 0.2); }
+.teamEnemyTag { color: #7a2525; background: #ffe4df; border: 1px solid rgba(255, 107, 107, 0.22); }
+
+.teamAlive {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  font-weight: 850;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.teamMembers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.42rem;
+}
+
+.teamMember {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  font-size: 0.64rem;
+  font-weight: 850;
+  color: var(--text-secondary);
+  background: rgba(34, 49, 58, 0.05);
+  border: 1px solid rgba(34, 49, 58, 0.08);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.teamMemberMe {
+  color: var(--primary-dark);
+  background: #e8faf7;
+  border-color: rgba(22, 138, 143, 0.26);
+}
+
+.teamMemberName {
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teamMemberHp {
+  font-style: normal;
+  font-weight: 950;
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.teamMemberCombo { font-style: normal; color: #8b5600; font-weight: 950; }
+
+.teamMemberKo { filter: grayscale(0.9); opacity: 0.6; }
+
+.teamMemberKoTag {
+  font-style: normal;
+  font-weight: 950;
+  color: #fff;
+  background: var(--danger);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.teamSolo {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  padding: 0.4rem 0;
+}
+
+/* 참가자 칩 팀 색 */
+.chipTeamMine { box-shadow: inset 3px 0 0 var(--primary); }
+.chipTeamEnemy { box-shadow: inset 3px 0 0 var(--red); }
+
+/* KO 입력 잠금 */
+.choicesLocked {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+  pointer-events: none;
+}
+
+.downedBar {
+  border-style: solid;
+  border-color: rgba(217, 79, 79, 0.34);
+  background: #fff0ee;
+  color: #b63838;
+}
+
+/* 전투 로그(팀) */
+.battleLogAlly,
+.battleLogFoe,
+.battleLogTko {
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 8px;
+  animation: logIn 0.34s ease backwards;
+}
+
+.battleLogAlly { color: #07393d; background: #e1f7f4; border: 1px solid rgba(22, 138, 143, 0.26); }
+.battleLogFoe { color: #7a2525; background: #ffeae6; border: 1px solid rgba(255, 107, 107, 0.26); }
+
+.battleLogTko {
+  color: #5a3b00;
+  background: linear-gradient(180deg, #ffe08a, #ffce5a);
+  border: 1px solid rgba(191, 123, 0, 0.32);
+  animation: logIn 0.34s ease backwards, koShake 0.45s ease 0.34s 2;
+}
+
+@media (max-width: 600px) {
+  .teamName { font-size: 0.74rem; }
+  .teamMember { font-size: 0.6rem; }
+  .teamMemberName { max-width: 52px; }
+  .battleLogAlly, .battleLogFoe, .battleLogTko { font-size: 0.68rem; padding: 3px 8px; }
+}

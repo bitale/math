@@ -11,6 +11,15 @@ interface BattleSettings {
   difficulty2Bonus: number;
   difficulty3Bonus: number;
   minRemainingSeconds: number;
+  maxHp: number;
+  hitBaseDamage: number;
+  missExtraDamage: number;
+  firstStrikeDamage: number;
+  comboDamageStep: number;
+  comboDamageMaxSteps: number;
+  firstCorrectBonus: number;
+  comboBonusStep: number;
+  comboBonusMaxSteps: number;
 }
 
 interface FlowSettings {
@@ -50,6 +59,15 @@ const BATTLE_FIELD_LABELS: FieldMeta<keyof BattleSettings> = {
   difficulty2Bonus: { label: "난도 2 보너스", hint: "추가 차감 초", step: 1, min: 0, max: 20 },
   difficulty3Bonus: { label: "고난도 보너스", hint: "추가 차감 초", step: 1, min: 0, max: 20 },
   minRemainingSeconds: { label: "최소 남은 시간", hint: "초 단위", step: 1, min: 1, max: 20 },
+  maxHp: { label: "시작 HP", hint: "각 플레이어 시작 체력", step: 5, min: 20, max: 500 },
+  hitBaseDamage: { label: "기본 피해", hint: "오답/미응답 시 피해", step: 1, min: 0, max: 100 },
+  missExtraDamage: { label: "미응답 추가 피해", hint: "무응답 시 추가 피해", step: 1, min: 0, max: 100 },
+  firstStrikeDamage: { label: "선취 추가 피해", hint: "선취 시 오답자 추가 피해", step: 1, min: 0, max: 100 },
+  comboDamageStep: { label: "콤보 피해/단계", hint: "선취자 콤보당 추가 피해", step: 1, min: 0, max: 50 },
+  comboDamageMaxSteps: { label: "콤보 피해 최대 단계", hint: "피해 증폭 상한", step: 1, min: 0, max: 20 },
+  firstCorrectBonus: { label: "선취 추가 점수", hint: "가장 먼저 정답 보너스", step: 1, min: 0, max: 20 },
+  comboBonusStep: { label: "콤보 점수 배수/단계", hint: "0.25 = +25%", step: 0.05, min: 0, max: 2 },
+  comboBonusMaxSteps: { label: "콤보 점수 최대 단계", hint: "배수 증폭 상한", step: 1, min: 0, max: 20 },
 };
 
 const FLOW_FIELD_LABELS: FieldMeta<keyof FlowSettings> = {
@@ -81,6 +99,18 @@ const BATTLE_FIELD_ORDER: Array<keyof BattleSettings> = [
   "difficulty2Bonus",
   "difficulty3Bonus",
   "minRemainingSeconds",
+];
+
+const BATTLE_HP_FIELD_ORDER: Array<keyof BattleSettings> = [
+  "maxHp",
+  "hitBaseDamage",
+  "missExtraDamage",
+  "firstStrikeDamage",
+  "comboDamageStep",
+  "comboDamageMaxSteps",
+  "firstCorrectBonus",
+  "comboBonusStep",
+  "comboBonusMaxSteps",
 ];
 
 const FLOW_FIELD_ORDER: Array<keyof FlowSettings> = [
@@ -200,6 +230,42 @@ function AdminPage() {
             <div>
               <span>고난도 초고속</span>
               <strong>-{settings.battle.pressureFastPenalty + settings.battle.difficulty3Bonus}초</strong>
+            </div>
+          </div>
+
+          <h2>HP 배틀 / 콤보</h2>
+          <div className={styles.grid}>
+            {BATTLE_HP_FIELD_ORDER.map((key) => {
+              const meta = BATTLE_FIELD_LABELS[key];
+              return (
+                <label key={key} className={styles.field}>
+                  <span>{meta.label}</span>
+                  <small>{meta.hint}</small>
+                  <input
+                    type="number"
+                    min={meta.min}
+                    max={meta.max}
+                    step={meta.step}
+                    value={settings.battle[key]}
+                    onChange={(event) => updateBattleField(key, Number(event.target.value))}
+                  />
+                </label>
+              );
+            })}
+          </div>
+
+          <div className={styles.preview}>
+            <div>
+              <span>난도 1 정답</span>
+              <strong>{1}점</strong>
+            </div>
+            <div>
+              <span>콤보 최대 배수</span>
+              <strong>x{(1 + settings.battle.comboBonusStep * settings.battle.comboBonusMaxSteps).toFixed(2)}</strong>
+            </div>
+            <div>
+              <span>선취 최대 피해</span>
+              <strong>{settings.battle.hitBaseDamage + settings.battle.missExtraDamage + settings.battle.firstStrikeDamage + settings.battle.comboDamageStep * settings.battle.comboDamageMaxSteps}</strong>
             </div>
           </div>
 

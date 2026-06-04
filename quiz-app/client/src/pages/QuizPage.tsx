@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import katex from "katex";
 import socket from "../socket";
-import type { ClientQuestion, QuestionResultData, MatchInfo, TimePressureData, AnswerCorrectData } from "../types";
+import type { ClientQuestion, QuestionResultData, MatchInfo, TimePressureData, AnswerCorrectData, PlayerScoreData } from "../types";
 import styles from "./QuizPage.module.css";
 
 interface QuizPageProps {
@@ -14,6 +14,23 @@ interface QuizPageProps {
   matchInfo: MatchInfo | null;
   timePressure: TimePressureData | null;
   answerCorrect: AnswerCorrectData | null;
+  battleScores: PlayerScoreData[];
+}
+
+interface BattleStat {
+  hp: number;
+  maxHp: number;
+  combo: number;
+  downed: boolean;
+}
+
+const DEFAULT_STAT: BattleStat = { hp: 100, maxHp: 100, combo: 0, downed: false };
+
+const TEAM_LABELS = ["청팀", "홍팀"];
+const teamLabel = (t: number): string => TEAM_LABELS[t] ?? `${t + 1}팀`;
+
+function hpPct(s: BattleStat): number {
+  return s.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((s.hp / s.maxHp) * 100))) : 0;
 }
 
 function renderLatex(text: string): string {
@@ -56,7 +73,7 @@ function getBannerIconClass(isCorrect?: boolean, selectedIndex?: number | null) 
   return `${styles.bannerIcon} ${styles.bannerIconWrong}`;
 }
 
-function QuizPage({ question, questionResult, timeLeft, userId, connected, answeredUsers, matchInfo, timePressure, answerCorrect }: QuizPageProps) {
+function QuizPage({ question, questionResult, timeLeft, userId, connected, answeredUsers, matchInfo, timePressure, answerCorrect, battleScores }: QuizPageProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [nextCountdown, setNextCountdown] = useState(3);
@@ -68,7 +85,50 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
 
   const players = useMemo(() => matchInfo?.users ?? [], [matchInfo]);
   const me = useMemo(() => players.find((p) => p.userId === userId), [players, userId]);
-  const opponents = useMemo(() => players.filter((p) => p.userId !== userId), [players, userId]);
+
+  /* 팀 구성 */
+  const myTeamId = me?.teamId ?? 0;
+  const enemyTeamId = useMemo(() => {
+    const other = players.find((p) => p.teamId !== myTeamId);
+    return other ? other.teamId : myTeamId === 0 ? 1 : 0;
+  }, [players, myTeamId]);
+  const myTeam = useMemo(() => players.filter((p) => p.teamId === myTeamId), [players, myTeamId]);
+  const enemyTeam = useMemo(() => players.filter((p) => p.teamId === enemyTeamId), [players, enemyTeamId]);
+  const isTeamBattle = !matchInfo?.isSolo && enemyTeam.length > 0;
+
+  /* 누적 HP/콤보 (결과 페이즈는 최신 결과, 진행 중에는 직전 누적값) */
+  const statByUser = useMemo(() => {
+    const src = questionResult?.scores ?? battleScores;
+    const m = new Map<string, BattleStat>();
+    for (const s of src) m.set(s.userId, { hp: s.hp, maxHp: s.maxHp, combo: s.combo, downed: s.downed });
+    return m;
+  }, [questionResult, battleScores]);
+  const getStat = useCallback((uid: string): BattleStat => statByUser.get(uid) ?? DEFAULT_STAT, [statByUser]);
+
+  /* 이번 문제의 개인별 정산 (피해/획득/쓰러짐) */
+  const resultByUser = useMemo(() => {
+    const m = new Map<string, QuestionResultData["results"][number]>();
+    if (questionResult) for (const r of questionResult.results) m.set(r.userId, r);
+    return m;
+  }, [questionResult]);
+
+  const hpStateClass = useCallback((s: BattleStat): string => {
+    if (s.hp <= 0) return styles.hpEmpty;
+    const r = s.maxHp > 0 ? s.hp / s.maxHp : 0;
+    if (r <= 0.3) return styles.hpLow;
+    if (r <= 0.6) return styles.hpMid;
+    return styles.hpHigh;
+  }, []);
+
+  /* 팀 집계 HP/생존 */
+  const teamAgg = useCallback((teamPlayers: typeof players): BattleStat & { alive: number; total: number } => {
+    let hp = 0, maxHp = 0, alive = 0;
+    for (const p of teamPlayers) {
+      const s = getStat(p.userId);
+      hp += s.hp; maxHp += s.maxHp; if (!s.downed) alive += 1;
+    }
+    return { hp, maxHp, combo: 0, downed: alive === 0, alive, total: teamPlayers.length };
+  }, [getStat]);
 
   /* 새 문제 진입 애니메이션 */
   useEffect(() => {
@@ -120,12 +180,14 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
     return () => clearInterval(iv);
   }, [questionResult]);
 
+  const iAmDowned = getStat(userId).downed;
+
   const handleSelect = useCallback((index: number) => {
-    if (submitted || selectedIndex !== null || !question) return;
+    if (submitted || selectedIndex !== null || !question || getStat(userId).downed) return;
     setSelectedIndex(index);
     setSubmitted(true);
     socket.emit("submitAnswer", { selectedIndex: index });
-  }, [submitted, selectedIndex, question]);
+  }, [submitted, selectedIndex, question, getStat, userId]);
 
   if (!question) {
     return (
@@ -144,11 +206,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
   const myResult = questionResult?.results.find((r) => r.userId === userId);
   const totalPlayers = players.length || 1;
   const answeredCount = answeredUsers.size;
-  const opponentCount = opponents.length || 1;
-  const opponentAnsweredCount = opponents.filter((p) => answeredUsers.has(p.userId)).length;
-  const myAnswered = answeredUsers.has(userId);
   const answerPressure = Math.round((answeredCount / totalPlayers) * 100);
-  const opponentPressure = Math.round((opponentAnsweredCount / opponentCount) * 100);
   const progress = (question.questionNumber / question.totalQuestions) * 100;
 
   /* 타이머 상태 */
@@ -175,6 +233,12 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
     : "";
   const pressureFromMe = timePressure?.attackerUserId === userId;
   const correctFromMe = answerCorrect?.userId === userId;
+
+  const myDelta = resultByUser.get(userId)?.scoreDelta ?? 0;
+  const koList = questionResult?.battle.koUserIds ?? [];
+  const myAgg = teamAgg(myTeam);
+  const enemyAgg = teamAgg(enemyTeam);
+  const tkoWinnerTeam = questionResult?.battle.tkoWinnerTeam ?? null;
 
   return (
     <div className={`${styles.container} ${isResultPhase ? styles.resultPhase : ""} ${battleStateClass} ${showTimePressure ? styles.timePressureHit : ""}`}>
@@ -260,43 +324,80 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       )}
 
       {answerCorrect && showCorrectToast && !isResultPhase && (
-        <div className={`${styles.correctToast} ${correctFromMe ? styles.correctToastMe : ""}`}>
-          <strong>{correctFromMe ? "내가 정답" : `${answerCorrect.nickname} 정답`}</strong>
-          <span>{correctFromMe ? "시간 압박 발동" : "상대가 맞췄어요"}</span>
+        <div className={`${styles.correctToast} ${correctFromMe ? styles.correctToastMe : ""} ${answerCorrect.isFirst ? styles.correctToastFirst : ""}`}>
+          <strong>
+            {answerCorrect.isFirst && <span className={styles.firstStrikeTag}>선취</span>}
+            {correctFromMe ? "내가 정답" : `${answerCorrect.nickname} 정답`}
+            {answerCorrect.combo > 1 && <span className={styles.comboInline}>🔥{answerCorrect.combo}</span>}
+          </strong>
+          <span>{answerCorrect.isFirst ? "선공 — 상대에게 추가 피해" : correctFromMe ? "콤보 적립 중" : "상대가 맞췄어요"}</span>
         </div>
       )}
 
       <div className={styles.battleHud}>
-        <div className={`${styles.fighterPanel} ${myAnswered && !isResultPhase ? styles.fighterLocked : ""}`}>
-          <div className={styles.fighterTopline}>
-            <span className={styles.fighterLabel}>나</span>
-            <span className={styles.fighterName}>{me?.nickname ?? "나"}</span>
+        {/* 우리 팀 */}
+        <div className={`${styles.teamPanel} ${styles.teamMine} ${myAgg.downed ? styles.teamWiped : ""}`}>
+          <div className={styles.teamHead}>
+            <span className={styles.teamName}>{teamLabel(myTeamId)}</span>
+            <span className={styles.teamMineTag}>우리팀</span>
+            <span className={styles.teamAlive}>생존 {myAgg.alive}/{myAgg.total}</span>
           </div>
-          <div className={styles.fighterStatus}>{myAnswered || isResultPhase ? "응답 완료" : "선택 대기"}</div>
-          <div className={styles.fighterGauge}>
-            <div className={styles.fighterGaugeFill} style={{ width: `${myAnswered || isResultPhase ? 100 : 18}%` }} />
+          <div className={styles.hpBar}>
+            <div className={`${styles.hpBarFill} ${hpStateClass(myAgg)}`} style={{ width: `${hpPct(myAgg)}%` }} />
+          </div>
+          <div className={styles.teamMembers}>
+            {myTeam.map((p) => {
+              const s = getStat(p.userId);
+              return (
+                <span key={p.userId} className={`${styles.teamMember} ${p.userId === userId ? styles.teamMemberMe : ""} ${s.downed ? styles.teamMemberKo : ""}`}>
+                  <span className={styles.teamMemberName}>{p.nickname}</span>
+                  {s.combo > 1 && <i className={styles.teamMemberCombo}>🔥{s.combo}</i>}
+                  {s.downed ? <em className={styles.teamMemberKoTag}>KO</em> : <i className={styles.teamMemberHp}>{s.hp}</i>}
+                </span>
+              );
+            })}
           </div>
         </div>
 
         <div className={styles.vsCore}>
-          <span>대결</span>
+          <span>{isTeamBattle ? "팀전" : "연습"}</span>
           <i />
         </div>
 
-        <div className={`${styles.fighterPanel} ${styles.enemyPanel} ${opponentAnsweredCount > 0 && !isResultPhase ? styles.fighterLocked : ""}`}>
-          <div className={styles.fighterTopline}>
-            <span className={styles.fighterLabel}>상대</span>
-            <span className={styles.fighterName}>{opponents[0]?.nickname ?? (matchInfo?.isSolo ? "인공지능" : "대기")}</span>
+        {/* 상대 팀 */}
+        {isTeamBattle ? (
+          <div className={`${styles.teamPanel} ${styles.teamEnemy} ${enemyAgg.downed ? styles.teamWiped : ""}`}>
+            <div className={styles.teamHead}>
+              <span className={styles.teamName}>{teamLabel(enemyTeamId)}</span>
+              <span className={styles.teamEnemyTag}>상대팀</span>
+              <span className={styles.teamAlive}>생존 {enemyAgg.alive}/{enemyAgg.total}</span>
+            </div>
+            <div className={styles.hpBar}>
+              <div className={`${styles.hpBarFill} ${hpStateClass(enemyAgg)}`} style={{ width: `${hpPct(enemyAgg)}%` }} />
+            </div>
+            <div className={styles.teamMembers}>
+              {enemyTeam.map((p) => {
+                const s = getStat(p.userId);
+                return (
+                  <span key={p.userId} className={`${styles.teamMember} ${s.downed ? styles.teamMemberKo : ""}`}>
+                    <span className={styles.teamMemberName}>{p.nickname}</span>
+                    {s.combo > 1 && <i className={styles.teamMemberCombo}>🔥{s.combo}</i>}
+                    {s.downed ? <em className={styles.teamMemberKoTag}>KO</em> : <i className={styles.teamMemberHp}>{s.hp}</i>}
+                  </span>
+                );
+              })}
+            </div>
           </div>
-          <div className={styles.fighterStatus}>{opponentAnsweredCount}/{opponentCount}명 응답</div>
-          <div className={styles.fighterGauge}>
-            <div className={styles.enemyGaugeFill} style={{ width: `${isResultPhase ? 100 : Math.max(12, opponentPressure)}%` }} />
+        ) : (
+          <div className={`${styles.teamPanel} ${styles.teamEnemy}`}>
+            <div className={styles.teamHead}><span className={styles.teamName}>연습 모드</span></div>
+            <div className={styles.teamSolo}>혼자 풀기 · 팀 전투 없음</div>
           </div>
-        </div>
+        )}
 
         {!isResultPhase && (
           <div className={styles.pressureMeter}>
-            <span>응답 압박 {answeredCount}/{totalPlayers}</span>
+            <span>응답 {answeredCount}/{totalPlayers}</span>
             <div className={styles.pressureTrack}>
               <div className={styles.pressureFill} style={{ width: `${answerPressure}%` }} />
             </div>
@@ -317,16 +418,22 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
             else if (ur?.selectedIndex === null) resultState = styles.playerMissed;
             else resultState = styles.playerWrong;
           }
+          const st = getStat(p.userId);
+          const pr = resultByUser.get(p.userId);
+          const teamClass = p.teamId === myTeamId ? styles.chipTeamMine : styles.chipTeamEnemy;
           return (
-            <div key={p.userId} className={`${styles.playerChip} ${isMe ? styles.playerMe : ""} ${answered && !isResultPhase ? styles.playerAnswered : ""} ${resultState}`}>
+            <div key={p.userId} className={`${styles.playerChip} ${teamClass} ${isMe ? styles.playerMe : ""} ${answered && !isResultPhase ? styles.playerAnswered : ""} ${st.downed ? styles.playerDowned : ""} ${resultState}`}>
               <div className={styles.playerAvatar} style={{ background: getAvatarColor(idx) }}>
                 {p.isBot ? "봇" : getInitial(p.nickname)}
               </div>
               <span className={styles.playerName}>{p.nickname}</span>
               {answered && !isResultPhase && <span className={styles.answeredCheck} aria-label="응답 완료" />}
-              {isResultPhase && questionResult.results.find(r => r.userId === p.userId)?.isCorrect && (
+              {isResultPhase && pr?.isCorrect && (
                 <span className={styles.resultEmoji} aria-label="정답" />
               )}
+              <span className={styles.playerHpBar}>
+                <span className={`${styles.playerHpFill} ${hpStateClass(st)}`} style={{ width: `${hpPct(st)}%` }} />
+              </span>
             </div>
           );
         })}
@@ -340,13 +447,13 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       </div>
 
       {/* 선택지 */}
-      <div className={`${styles.choices} ${showChoices ? styles.choicesVisible : ""}`}>
+      <div className={`${styles.choices} ${showChoices ? styles.choicesVisible : ""} ${iAmDowned && !isResultPhase ? styles.choicesLocked : ""}`}>
         {question.choices.map((choice, index) => (
           <button
             key={index}
             className={getChoiceClass(index)}
             onClick={() => handleSelect(index)}
-            disabled={submitted || isResultPhase}
+            disabled={submitted || isResultPhase || iAmDowned}
             style={{ animationDelay: `${index * 0.08}s` }}
           >
             <span className={styles.choiceShape}>{CHOICE_SHAPES[index]}</span>
@@ -358,8 +465,13 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
         ))}
       </div>
 
-      {/* ── 응답 대기 ── */}
-      {submitted && !isResultPhase && (
+      {/* ── KO 관전 / 응답 대기 ── */}
+      {iAmDowned && !isResultPhase && (
+        <div className={`${styles.waitingBar} ${styles.downedBar}`}>
+          <span>전투 불능 — 우리 팀을 응원하세요 (KO 시 응답 불가)</span>
+        </div>
+      )}
+      {!iAmDowned && submitted && !isResultPhase && (
         <div className={styles.waitingBar}>
           <div className={styles.waitingPulse} />
           <span>{answeredUsers.size}/{totalPlayers}명 응답 완료</span>
@@ -378,7 +490,40 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
             <span className={styles.bannerText}>
               {myResult?.isCorrect ? "정답!" : myResult?.selectedIndex === null ? "시간 초과" : "오답!"}
             </span>
+            {myResult?.isCorrect && myDelta > 0 && (
+              <span className={styles.bannerDelta}>
+                +{myDelta}점{myResult.isFirstCorrect && <em> 선취</em>}{myResult.combo > 1 && <em> 🔥{myResult.combo}</em>}
+              </span>
+            )}
+            {!myResult?.isCorrect && (myResult?.damageTaken ?? 0) > 0 && (
+              <span className={styles.bannerDmg}>-{myResult?.damageTaken} HP{myResult?.justDowned && <em> KO</em>}</span>
+            )}
           </div>
+
+          {/* 전투 로그 */}
+          {(questionResult.battle.teamAttacks.some((t) => t.attack > 0 && t.targets.length > 0) || koList.length > 0 || tkoWinnerTeam !== null) && (
+            <div className={styles.battleLog}>
+              {questionResult.battle.teamAttacks
+                .filter((ta) => ta.attack > 0 && ta.targets.length > 0)
+                .map((ta) => (
+                  <span key={ta.teamId} className={ta.teamId === myTeamId ? styles.battleLogAlly : styles.battleLogFoe}>
+                    {ta.teamId === myTeamId ? "⚔️ 우리팀" : "🛡️ 상대팀"} 공격
+                    {ta.firstCorrectNickname && ` (선취 ${ta.firstCorrectNickname}${ta.combo > 1 ? ` 🔥${ta.combo}` : ""})`}
+                    {" → "}
+                    {ta.targets.map((t) => `${t.nickname} -${t.damage}`).join(", ")}
+                  </span>
+                ))}
+              {koList.map((uid) => {
+                const ko = questionResult.results.find((r) => r.userId === uid);
+                return <span key={uid} className={styles.battleLogKo}>💥 {ko?.nickname ?? "참가자"} 쓰러짐!</span>;
+              })}
+              {tkoWinnerTeam !== null && (
+                <span className={styles.battleLogTko}>
+                  🏆 {teamLabel(tkoWinnerTeam)} TKO 승리!
+                </span>
+              )}
+            </div>
+          )}
 
           {/* 풀이 */}
           {questionResult.explanation && (
@@ -392,11 +537,16 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
             <div className={styles.liveScoresTitle}>실시간 순위</div>
             <div className={styles.scoreList}>
               {[...questionResult.scores]
-                .sort((a, b) => b.score - a.score)
+                .sort((a, b) => {
+                  if (a.downed !== b.downed) return a.downed ? 1 : -1;
+                  return b.score - a.score;
+                })
                 .map((s, idx) => {
                   const isMe = s.userId === userId;
+                  const delta = resultByUser.get(s.userId)?.scoreDelta ?? 0;
+                  const st: BattleStat = { hp: s.hp, maxHp: s.maxHp, combo: s.combo, downed: s.downed };
                   return (
-                    <div key={s.userId} className={`${styles.scoreRow} ${isMe ? styles.scoreRowMe : ""}`}
+                    <div key={s.userId} className={`${styles.scoreRow} ${isMe ? styles.scoreRowMe : ""} ${s.downed ? styles.scoreRowDowned : ""}`}
                          style={{ animationDelay: `${idx * 0.1}s` }}>
                       <span className={styles.scoreRank}>
                         {idx + 1}
@@ -404,12 +554,20 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
                       <div className={styles.scoreAvatar} style={{ background: getAvatarColor(players.findIndex(p => p.userId === s.userId)) }}>
                         {s.isBot ? "봇" : getInitial(s.nickname)}
                       </div>
-                      <span className={styles.scoreName}>{s.nickname}</span>
-                      <span className={styles.scorePoints}>{s.score}<small>점</small></span>
-                      <div className={styles.scoreStats}>
-                        <span className={styles.statCorrect}>{s.correct}O</span>
-                        <span className={styles.statWrong}>{s.wrong}X</span>
+                      <div className={styles.scoreMid}>
+                        <span className={styles.scoreName}>
+                          {s.nickname}
+                          {s.combo > 1 && <span className={styles.comboInline}>🔥{s.combo}</span>}
+                          {s.downed && <span className={styles.koTag}>KO</span>}
+                        </span>
+                        <span className={styles.scoreHpBar}>
+                          <span className={`${styles.scoreHpFill} ${hpStateClass(st)}`} style={{ width: `${hpPct(st)}%` }} />
+                        </span>
                       </div>
+                      <span className={styles.scorePoints}>
+                        {s.score}<small>점</small>
+                        {delta > 0 && <span className={styles.scoreDelta}>+{delta}</span>}
+                      </span>
                     </div>
                   );
                 })}

@@ -82,8 +82,17 @@ const SUBJECTS = [
   },
 ];
 
+const RULES = [
+  { icon: "⚔️", title: "2팀 대전", desc: "매칭되면 자동으로 청팀·홍팀 두 팀으로 나뉘어 싸웁니다 (2:2, 2:1 등)." },
+  { icon: "🎯", title: "정답 = 적팀 공격", desc: "맞히면 우리 팀이 '틀리거나 못 푼' 상대를 공격해 HP를 깎습니다. 우리 팀 전원 정답이면 완전 방어!" },
+  { icon: "⚡", title: "선취 · 콤보", desc: "팀에서 가장 먼저 맞히면(선취) 추가 점수·추가 공격. 연속 정답 콤보가 쌓일수록 점수 배수와 공격력이 올라가고, 틀리면 콤보가 끊깁니다." },
+  { icon: "💥", title: "HP 0 = KO", desc: "HP가 0이 되면 쓰러져서 더 이상 문제를 풀 수 없고 관전만 합니다." },
+  { icon: "🏆", title: "TKO 승리", desc: "상대 팀 전원이 KO되면 즉시 승리! 끝까지 가면 생존 인원 → 총 HP → 총점 순으로 승패를 정합니다." },
+];
+
 function SubjectSelectPage({ nickname, grades, connected, onSelectGrade, onChangeNickname }: Props) {
   const [openSubject, setOpenSubject] = useState<string | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => { socket.emit("requestGrades"); }, []);
 
@@ -107,6 +116,27 @@ function SubjectSelectPage({ nickname, grades, connected, onSelectGrade, onChang
       </header>
 
       <p className={styles.tagline}>과목을 선택하고 배틀을 시작하세요!</p>
+
+      {/* 게임 설명서 */}
+      <div className={`${styles.rulesCard} ${showRules ? styles.rulesOpen : ""}`}>
+        <button className={styles.rulesToggle} onClick={() => setShowRules((v) => !v)}>
+          <span className={styles.rulesToggleTitle}>📖 게임 방법 (팀 배틀 규칙)</span>
+          <span className={`${styles.chevron} ${showRules ? styles.chevronUp : ""}`}>▾</span>
+        </button>
+        {showRules && (
+          <div className={styles.rulesList}>
+            {RULES.map((r) => (
+              <div key={r.title} className={styles.ruleItem}>
+                <span className={styles.ruleIcon}>{r.icon}</span>
+                <div className={styles.ruleText}>
+                  <span className={styles.ruleTitle}>{r.title}</span>
+                  <span className={styles.ruleDesc}>{r.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 과목 카드 */}
       <div className={styles.subjects}>

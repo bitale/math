@@ -1,6 +1,6 @@
 import {
   Room, User, QueueEntry, PlayerAnswer, PlayerScore,
-  QuestionResultData, GameResultData, QuestionReviewData, LearningAnalysisData,
+  QuestionResultData, GameResultData, QuestionReviewData, LearningAnalysisData, TeamSummary,
 } from "./roomTypes";
 import { ClientQuestion } from "../quiz/quizTypes";
 import { getRandomQuestions, getGameSettings } from "../quiz/questions";
@@ -107,6 +107,7 @@ export class RoomManager {
       connected: true,
       isBot: false,
       joinedAt: e.joinedAt,
+      teamId: 0,
     }));
 
     const questions = getRandomQuestions(settings.questionCount, gradeKey);
@@ -134,12 +135,16 @@ export class RoomManager {
     for (const u of users) this.userRoomMap.set(u.userId, roomId);
 
     // 점수 초기화
+    const maxHp = getBattleSettings().maxHp;
     for (const u of users) {
       room.scores.set(u.userId, {
-        userId: u.userId, nickname: u.nickname, isBot: false,
+        userId: u.userId, nickname: u.nickname, isBot: false, teamId: u.teamId,
         correct: 0, wrong: 0, missed: 0, score: 0,
+        hp: maxHp, maxHp, combo: 0, maxCombo: 0, downed: false, downedAtQuestion: null,
       });
     }
+
+    if (!isSolo) this.assignTeams(room);
 
     return room;
   }
@@ -148,6 +153,7 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) return;
     const existingNames = room.users.map((u) => u.nickname);
+    const maxHp = getBattleSettings().maxHp;
     for (let i = 0; i < count; i++) {
       const name = pickBotName(existingNames);
       existingNames.push(name);
@@ -158,13 +164,32 @@ export class RoomManager {
         connected: true,
         isBot: true,
         joinedAt: Date.now(),
+        teamId: 0,
       };
       room.users.push(botUser);
       room.scores.set(botUser.userId, {
-        userId: botUser.userId, nickname: botUser.nickname, isBot: true,
+        userId: botUser.userId, nickname: botUser.nickname, isBot: true, teamId: 0,
         correct: 0, wrong: 0, missed: 0, score: 0,
+        hp: maxHp, maxHp, combo: 0, maxCombo: 0, downed: false, downedAtQuestion: null,
       });
     }
+    if (!room.isSolo) this.assignTeams(room);
+  }
+
+  /** 방 인원을 무작위로 섞어 정확히 2팀으로 균등 분할 */
+  private assignTeams(room: Room): void {
+    const ordered = [...room.users];
+    for (let i = ordered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ordered[i], ordered[j]] = [ordered[j], ordered[i]];
+    }
+    const half = Math.ceil(ordered.length / 2);
+    ordered.forEach((u, idx) => {
+      const teamId = idx < half ? 0 : 1;
+      u.teamId = teamId;
+      const sc = room.scores.get(u.userId);
+      if (sc) sc.teamId = teamId;
+    });
   }
 
   /* ── 게임 흐름 ── */
@@ -190,10 +215,13 @@ export class RoomManager {
 
   submitAnswer(
     roomId: string, userId: string, selectedIndex: number,
-  ): { success: boolean; error?: string; alreadyAnswered?: boolean; isCorrect?: boolean; elapsedMs?: number } {
+  ): { success: boolean; error?: string; alreadyAnswered?: boolean; isCorrect?: boolean; elapsedMs?: number; isFirstCorrect?: boolean; comboNext?: number } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: "방 없음" };
     if (room.status !== "PLAYING") return { success: false, error: "진행 중 아님" };
+
+    const myScore = room.scores.get(userId);
+    if (myScore?.downed) return { success: false, error: "전투 불능" };
 
     const questionKey = `q_${room.currentQuestionIndex}`;
     const currentQ = room.questions[room.currentQuestionIndex];
@@ -210,6 +238,13 @@ export class RoomManager {
     }
 
     const isCorrect = currentQ.choices[selectedIndex] === currentQ.answer;
+    // 팀 선취: 같은 팀에서 먼저 정답을 맞춘 사람이 없고 이번이 정답이면 선취
+    const myTeam = myScore?.teamId ?? 0;
+    const isFirstCorrect = isCorrect && !answers.some(
+      (a) => a.isCorrect && (room.scores.get(a.userId)?.teamId ?? 0) === myTeam,
+    );
+    // 정산 전이므로 콤보는 (현재 콤보 + 1)이 예정값
+    const comboNext = isCorrect ? (room.scores.get(userId)?.combo ?? 0) + 1 : 0;
     const answeredAt = Date.now();
     answers.push({
       userId,
@@ -222,6 +257,8 @@ export class RoomManager {
     return {
       success: true,
       isCorrect,
+      isFirstCorrect,
+      comboNext,
       elapsedMs: room.questionStartedAt ? Math.max(0, answeredAt - room.questionStartedAt) : undefined,
     };
   }
@@ -231,7 +268,10 @@ export class RoomManager {
     if (!room) return false;
     const questionKey = `q_${room.currentQuestionIndex}`;
     const answers = room.answers.get(questionKey) || [];
-    const activePlayers = room.users.filter((u) => u.connected && room.scores.has(u.userId));
+    // 쓰러진(KO) 플레이어는 응답할 수 없으므로 집계에서 제외
+    const activePlayers = room.users.filter(
+      (u) => u.connected && room.scores.has(u.userId) && !room.scores.get(u.userId)!.downed,
+    );
     return answers.length >= activePlayers.length;
   }
 
@@ -269,7 +309,9 @@ export class RoomManager {
     const attackerAnswer = answers.find((a) => a.userId === attackerUserId);
     if (!attackerAnswer?.isCorrect || !attackerAnswer.answeredAt || !room.questionStartedAt || !room.questionEndsAt) return null;
 
-    const activePlayers = room.users.filter((u) => u.connected && room.scores.has(u.userId));
+    const activePlayers = room.users.filter(
+      (u) => u.connected && room.scores.has(u.userId) && !room.scores.get(u.userId)!.downed,
+    );
     const hasUnansweredOpponent = activePlayers.some(
       (u) => u.userId !== attackerUserId && !answers.some((a) => a.userId === u.userId),
     );
@@ -327,12 +369,13 @@ export class RoomManager {
 
   scheduleBotAnswers(
     roomId: string,
-    onBotAnswered: (userId: string, isCorrect: boolean) => void,
+    onBotAnswered: (userId: string, isCorrect: boolean, isFirstCorrect: boolean, comboNext: number) => void,
     onAllAnswered: () => void,
   ): void {
     const room = this.rooms.get(roomId);
     if (!room) return;
-    const bots = room.users.filter((u) => u.isBot);
+    // 쓰러진 봇은 응답하지 않음
+    const bots = room.users.filter((u) => u.isBot && !room.scores.get(u.userId)?.downed);
     const botSettings = getBotSettings();
     const maxDelay = room.timeLimitSeconds * botSettings.botMaxDelayRatio * 1000;
 
@@ -355,7 +398,7 @@ export class RoomManager {
 
         const result = this.submitAnswer(roomId, bot.userId, sel);
         if (result.success) {
-          onBotAnswered(bot.userId, result.isCorrect ?? false);
+          onBotAnswered(bot.userId, result.isCorrect ?? false, result.isFirstCorrect ?? false, result.comboNext ?? 0);
           if (this.checkAllAnswered(roomId)) onAllAnswered();
         }
       }, delay);
@@ -376,19 +419,136 @@ export class RoomManager {
     const answers = room.answers.get(questionKey) || [];
     const correctIndex = q.choices.findIndex((c) => c === q.answer);
     const points = getQuestionPoints(q);
+    const battle = getBattleSettings();
+    const nameOf = (uid: string) => room.users.find((u) => u.userId === uid)?.nickname ?? "참가자";
 
+    const allScores = Array.from(room.scores.values());
+    const teamIds = Array.from(new Set(allScores.map((s) => s.teamId))).sort((a, b) => a - b);
+    const isTeamBattle = !room.isSolo && teamIds.length >= 2;
+
+    // ── 팀별 선취(가장 먼저 정답을 낸 팀원) ──
+    const teamFirstCorrect = new Map<number, string>();
+    for (const a of answers.filter((x) => x.isCorrect && x.answeredAt != null).sort((x, y) => x.answeredAt! - y.answeredAt!)) {
+      const t = room.scores.get(a.userId)?.teamId ?? 0;
+      if (!teamFirstCorrect.has(t)) teamFirstCorrect.set(t, a.userId);
+    }
+
+    // ── 1차 패스: 콤보 + 점수 + 통계 ──
+    const perUser = new Map<string, { scoreDelta: number; isFirst: boolean }>();
+    for (const [userId, score] of room.scores.entries()) {
+      // 이미 쓰러진 플레이어는 응답 불가 → 통계/콤보 변동 없음(정답률에서 제외)
+      if (score.downed) { perUser.set(userId, { scoreDelta: 0, isFirst: false }); continue; }
+      const answer = answers.find((a) => a.userId === userId);
+      if (answer?.isCorrect) {
+        score.combo += 1;
+        if (score.combo > score.maxCombo) score.maxCombo = score.combo;
+        const comboSteps = Math.min(Math.max(0, score.combo - 1), battle.comboBonusMaxSteps);
+        const comboMult = 1 + battle.comboBonusStep * comboSteps;
+        const isFirst = teamFirstCorrect.get(score.teamId) === userId;
+        const gained = Math.round(points * comboMult) + (isFirst ? battle.firstCorrectBonus : 0);
+        score.score += gained;
+        score.correct += 1;
+        perUser.set(userId, { scoreDelta: gained, isFirst });
+      } else {
+        score.combo = 0;
+        if (!answer) score.missed += 1; else score.wrong += 1;
+        perUser.set(userId, { scoreDelta: 0, isFirst: false });
+      }
+    }
+
+    // ── 2차 패스: 팀 공격 정산 ──
+    const koUserIds: string[] = [];
+    const damageByUser = new Map<string, number>();
+    const teamAttacks: QuestionResultData["battle"]["teamAttacks"] = [];
+
+    const answeredCorrect = (uid: string) => answers.find((a) => a.userId === uid)?.isCorrect ?? false;
+
+    if (isTeamBattle) {
+      // 각 팀의 공격력 산출 (쓰러지지 않은 정답자만)
+      for (const teamId of teamIds) {
+        const attackers = allScores.filter((s) => s.teamId === teamId && !s.downed && answeredCorrect(s.userId));
+        let attack = 0;
+        for (const atk of attackers) {
+          const steps = Math.min(Math.max(0, atk.combo - 1), battle.comboDamageMaxSteps);
+          attack += battle.hitBaseDamage + battle.comboDamageStep * steps;
+        }
+        const firstId = teamFirstCorrect.get(teamId);
+        let firstCorrectNickname: string | null = null;
+        let combo = 0;
+        if (firstId) {
+          attack += battle.firstStrikeDamage;
+          firstCorrectNickname = nameOf(firstId);
+          combo = room.scores.get(firstId)?.combo ?? 0;
+        }
+        teamAttacks.push({ teamId, attack, firstCorrectNickname, combo, targets: [] });
+      }
+
+      // 각 팀의 공격을 적팀 노출자(쓰러지지 않았고 오답/미응답) 중 HP 최저에게 집중타
+      for (const ta of teamAttacks) {
+        if (ta.attack <= 0) continue;
+        const enemyTeam = teamIds.find((t) => t !== ta.teamId);
+        if (enemyTeam === undefined) continue;
+        const exposed = allScores
+          .filter((s) => s.teamId === enemyTeam && !s.downed && !answeredCorrect(s.userId))
+          .sort((a, b) => a.hp - b.hp);
+        if (exposed.length === 0) continue; // 적팀 완전 방어
+        const target = exposed[0];
+        const missed = !answers.find((a) => a.userId === target.userId);
+        const dmg = ta.attack + (missed ? battle.missExtraDamage : 0);
+        const newHp = Math.max(0, target.hp - dmg);
+        const actual = target.hp - newHp;
+        target.hp = newHp;
+        damageByUser.set(target.userId, (damageByUser.get(target.userId) ?? 0) + actual);
+        ta.targets.push({ userId: target.userId, nickname: nameOf(target.userId), damage: actual });
+        if (newHp === 0 && !target.downed) { target.downed = true; target.downedAtQuestion = idx; koUserIds.push(target.userId); }
+      }
+    } else {
+      // 솔로(연습): 적팀이 없으므로 오답/미응답 시 본인 피해
+      for (const [userId, score] of room.scores.entries()) {
+        if (score.downed || answeredCorrect(userId)) continue;
+        const missed = !answers.find((a) => a.userId === userId);
+        const dmg = battle.hitBaseDamage + (missed ? battle.missExtraDamage : 0);
+        const newHp = Math.max(0, score.hp - dmg);
+        const actual = score.hp - newHp;
+        score.hp = newHp;
+        damageByUser.set(userId, actual);
+        if (newHp === 0 && !score.downed) { score.downed = true; score.downedAtQuestion = idx; koUserIds.push(userId); }
+      }
+    }
+
+    // ── TKO 판정: 한 팀이 전멸했는지 ──
+    let tkoWinnerTeam: number | null = null;
+    if (isTeamBattle) {
+      const wiped = teamIds.filter((t) => {
+        const members = allScores.filter((s) => s.teamId === t);
+        return members.length > 0 && members.every((s) => s.downed);
+      });
+      if (wiped.length === 1) tkoWinnerTeam = teamIds.find((t) => t !== wiped[0]) ?? null;
+    }
+
+    // ── 결과 배열 ──
     const results: QuestionResultData["results"] = [];
     for (const [userId, score] of room.scores.entries()) {
       const user = room.users.find((u) => u.userId === userId);
       if (!user) continue;
       const answer = answers.find((a) => a.userId === userId);
-      if (answer) {
-        if (answer.isCorrect) { score.correct++; score.score += points; } else { score.wrong++; }
-        results.push({ userId, nickname: user.nickname, isBot: user.isBot, selectedIndex: answer.selectedIndex, isCorrect: answer.isCorrect });
-      } else {
-        score.missed++;
-        results.push({ userId, nickname: user.nickname, isBot: user.isBot, selectedIndex: null, isCorrect: false });
-      }
+      const meta = perUser.get(userId) ?? { scoreDelta: 0, isFirst: false };
+      results.push({
+        userId,
+        nickname: user.nickname,
+        isBot: user.isBot,
+        teamId: score.teamId,
+        selectedIndex: answer ? answer.selectedIndex : null,
+        isCorrect: answer?.isCorrect ?? false,
+        scoreDelta: meta.scoreDelta,
+        isFirstCorrect: meta.isFirst,
+        damageTaken: damageByUser.get(userId) ?? 0,
+        hp: score.hp,
+        maxHp: score.maxHp,
+        combo: score.combo,
+        downed: score.downed,
+        justDowned: koUserIds.includes(userId),
+      });
     }
 
     const scores = Array.from(room.scores.values()).sort((a, b) => b.score - a.score);
@@ -411,6 +571,7 @@ export class RoomManager {
       nextConnection: q.nextConnection,
       results,
       scores,
+      battle: { koUserIds, teamAttacks, tkoWinnerTeam },
       isLastQuestion: idx >= room.questions.length - 1,
     };
   }
@@ -426,8 +587,17 @@ export class RoomManager {
     return true;
   }
 
-  private buildQuestionReviews(room: Room, userId: string): QuestionReviewData[] {
-    return room.questions.map((q, index) => {
+  /** TKO 등으로 게임을 즉시 종료 */
+  endGame(roomId: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    room.status = "RESULT";
+    this.clearQuestionTimer(roomId);
+    this.clearBotTimers(roomId);
+  }
+
+  private buildQuestionReviews(room: Room, userId: string, count: number): QuestionReviewData[] {
+    return room.questions.slice(0, Math.max(0, count)).map((q, index) => {
       const questionKey = `q_${index}`;
       const answer = (room.answers.get(questionKey) || []).find((a) => a.userId === userId);
       return {
@@ -528,24 +698,81 @@ export class RoomManager {
   getGameResult(roomId: string): GameResultData | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    const scores = Array.from(room.scores.values()).sort((a, b) => b.score - a.score);
+    // 생존자 우선 → 점수 → HP → 정답 수
+    const scores = Array.from(room.scores.values()).sort((a, b) => {
+      if (a.downed !== b.downed) return a.downed ? 1 : -1;
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.hp !== a.hp) return b.hp - a.hp;
+      return b.correct - a.correct;
+    });
     const rankings: Array<PlayerScore & { rank: number }> = [];
     let rank = 1;
     for (let i = 0; i < scores.length; i++) {
-      if (i > 0 && scores[i].score < scores[i - 1].score) rank = i + 1;
+      const prev = scores[i - 1];
+      if (i > 0 && (scores[i].downed !== prev.downed || scores[i].score !== prev.score)) rank = i + 1;
       rankings.push({ ...scores[i], rank });
     }
+
+    // 실제로 진행된 문제 수 (TKO로 조기 종료 시 currentQuestionIndex가 마지막 문제를 가리킴)
+    const playedCount = Math.min(room.currentQuestionIndex + 1, room.questions.length);
 
     const reviewsByUser: Record<string, QuestionReviewData[]> = {};
     const analysisByUser: Record<string, LearningAnalysisData> = {};
     for (const user of room.users) {
-      if (!room.scores.has(user.userId)) continue;
-      const reviews = this.buildQuestionReviews(room, user.userId);
+      const score = room.scores.get(user.userId);
+      if (!score) continue;
+      // 응답 가능했던 문제까지만 집계: 진행된 문제 ∩ (KO 전까지). KO된 문제는 본인이 응답을 시도했으므로 포함.
+      const limit = score.downedAtQuestion !== null
+        ? Math.min(playedCount, score.downedAtQuestion + 1)
+        : playedCount;
+      const reviews = this.buildQuestionReviews(room, user.userId, limit);
       reviewsByUser[user.userId] = reviews;
       analysisByUser[user.userId] = this.buildLearningAnalysis(reviews);
     }
 
-    return { rankings, gradeKey: room.gradeKey, reviewsByUser, analysisByUser };
+    // ── 팀 집계 ──
+    const allScores = Array.from(room.scores.values());
+    const teamIds = Array.from(new Set(allScores.map((s) => s.teamId))).sort((a, b) => a - b);
+    const isTeamBattle = !room.isSolo && teamIds.length >= 2;
+
+    const teams: TeamSummary[] = teamIds.map((teamId) => {
+      const members = allScores.filter((s) => s.teamId === teamId);
+      return {
+        teamId,
+        aliveCount: members.filter((s) => !s.downed).length,
+        totalHp: members.reduce((sum, s) => sum + s.hp, 0),
+        totalScore: members.reduce((sum, s) => sum + s.score, 0),
+        members: members
+          .sort((a, b) => b.score - a.score)
+          .map((s) => ({
+            userId: s.userId, nickname: s.nickname, isBot: s.isBot,
+            score: s.score, hp: s.hp, maxHp: s.maxHp, downed: s.downed, maxCombo: s.maxCombo,
+          })),
+      };
+    });
+
+    // 승패: 생존 인원 수 → 총 HP → 총점
+    let winnerTeam: number | null = null;
+    let tko = false;
+    if (isTeamBattle && teams.length >= 2) {
+      tko = teams.some((t) => t.aliveCount === 0);
+      const sorted = [...teams].sort(
+        (a, b) => b.aliveCount - a.aliveCount || b.totalHp - a.totalHp || b.totalScore - a.totalScore,
+      );
+      const [first, second] = sorted;
+      const tie = first.aliveCount === second.aliveCount
+        && first.totalHp === second.totalHp
+        && first.totalScore === second.totalScore;
+      winnerTeam = tie ? null : first.teamId;
+    }
+
+    return {
+      rankings,
+      gradeKey: room.gradeKey,
+      teamBattle: { isTeamBattle, winnerTeam, tko, teams },
+      reviewsByUser,
+      analysisByUser,
+    };
   }
 
   /* ── 방 삭제 / 나가기 ── */
@@ -629,6 +856,7 @@ export class RoomManager {
         nickname: u.nickname,
         isBot: u.isBot,
         connected: u.connected,
+        teamId: u.teamId,
       })),
       questionCount: room.questionCount,
       timeLimitSeconds: room.timeLimitSeconds,

@@ -9,6 +9,7 @@ export interface User {
   connected: boolean;
   isBot: boolean;
   joinedAt: number;
+  teamId: number;
 }
 
 export interface QueueEntry {
@@ -30,10 +31,17 @@ export interface PlayerScore {
   userId: string;
   nickname: string;
   isBot: boolean;
+  teamId: number;
   correct: number;
   wrong: number;
   missed: number;
   score: number;
+  hp: number;
+  maxHp: number;
+  combo: number;
+  maxCombo: number;
+  downed: boolean;
+  downedAtQuestion: number | null; // KO된 문제 인덱스 (이후 문제는 응답 불가 → 정답률 집계 제외)
 }
 
 export interface Room {
@@ -76,10 +84,30 @@ export interface QuestionResultData {
     userId: string;
     nickname: string;
     isBot: boolean;
+    teamId: number;
     selectedIndex: number | null;
     isCorrect: boolean;
+    scoreDelta: number;      // 이 문제에서 얻은 점수
+    isFirstCorrect: boolean; // 팀 선취 여부
+    damageTaken: number;     // 이 문제에서 입은 피해
+    hp: number;
+    maxHp: number;
+    combo: number;
+    downed: boolean;
+    justDowned: boolean;     // 이 문제에서 쓰러졌는지
   }>;
   scores: PlayerScore[];
+  battle: {
+    koUserIds: string[];     // 이 문제에서 쓰러진 사람들
+    teamAttacks: Array<{
+      teamId: number;
+      attack: number;                    // 팀 총 공격력
+      firstCorrectNickname: string | null; // 팀 선취자
+      combo: number;                     // 선취자 콤보
+      targets: Array<{ userId: string; nickname: string; damage: number }>; // 적팀 피격자
+    }>;
+    tkoWinnerTeam: number | null;        // 이 문제에서 한 팀 전멸 시 승리 팀
+  };
   isLastQuestion: boolean;
 }
 
@@ -129,9 +157,32 @@ export interface LearningAnalysisData {
   }>;
 }
 
+export interface TeamSummary {
+  teamId: number;
+  aliveCount: number;
+  totalHp: number;
+  totalScore: number;
+  members: Array<{
+    userId: string;
+    nickname: string;
+    isBot: boolean;
+    score: number;
+    hp: number;
+    maxHp: number;
+    downed: boolean;
+    maxCombo: number;
+  }>;
+}
+
 export interface GameResultData {
   rankings: Array<PlayerScore & { rank: number }>;
   gradeKey: string;
+  teamBattle: {
+    isTeamBattle: boolean;
+    winnerTeam: number | null; // null = 무승부
+    tko: boolean;
+    teams: TeamSummary[];
+  };
   reviewsByUser: Record<string, QuestionReviewData[]>;
   analysisByUser: Record<string, LearningAnalysisData>;
 }

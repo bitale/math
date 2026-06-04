@@ -30,6 +30,8 @@ function Latex({ text }: { text: string }) {
 
 const CHOICE_COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12"];
 const PODIUM_COLORS = ["#fdcb6e", "#b2bec3", "#e17055"];
+const TEAM_LABELS = ["청팀", "홍팀"];
+const teamLabel = (t: number): string => TEAM_LABELS[t] ?? `${t + 1}팀`;
 const AVATAR_COLORS = [
   "#6c5ce7", "#00cec9", "#e17055", "#00b894",
   "#fdcb6e", "#e84393", "#0984e3", "#55efc4",
@@ -37,6 +39,15 @@ const AVATAR_COLORS = [
 
 function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }: ResultPageProps) {
   const { rankings } = result;
+  const tb = result.teamBattle;
+  const myTeamId = rankings.find((r) => r.userId === userId)?.teamId ?? 0;
+  const myResultText = tb?.isTeamBattle
+    ? tb.winnerTeam === null
+      ? "무승부"
+      : tb.winnerTeam === myTeamId
+        ? "승리!"
+        : "패배"
+    : null;
   const [showPodium, setShowPodium] = useState(false);
   const [showTable, setShowTable] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -104,6 +115,51 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
         <h1 className={styles.title}>최종 결과</h1>
       </div>
 
+      {/* 팀 전투 결과 */}
+      {tb?.isTeamBattle && (
+        <div className={`${styles.teamResult} ${
+          myResultText === "승리!" ? styles.teamResultWin :
+          myResultText === "패배" ? styles.teamResultLose : styles.teamResultDraw
+        }`}>
+          <div className={styles.teamResultBanner}>
+            <span className={styles.teamResultText}>{myResultText}</span>
+            <span className={styles.teamResultSub}>
+              {tb.tko
+                ? (tb.winnerTeam !== null ? `${teamLabel(tb.winnerTeam)} TKO 승리` : "더블 KO")
+                : tb.winnerTeam !== null ? `${teamLabel(tb.winnerTeam)} 판정승` : "동률 무승부"}
+            </span>
+          </div>
+          <div className={styles.teamCards}>
+            {[...tb.teams].sort((a, b) => (a.teamId === myTeamId ? -1 : b.teamId === myTeamId ? 1 : 0)).map((team) => {
+              const isMyTeam = team.teamId === myTeamId;
+              const isWinner = tb.winnerTeam === team.teamId;
+              return (
+                <div key={team.teamId} className={`${styles.teamCard} ${isMyTeam ? styles.teamCardMine : ""} ${isWinner ? styles.teamCardWinner : ""}`}>
+                  <div className={styles.teamCardHead}>
+                    <span className={styles.teamCardName}>{teamLabel(team.teamId)}{isMyTeam && " (우리팀)"}</span>
+                    {isWinner && <span className={styles.teamWinBadge}>WIN</span>}
+                  </div>
+                  <div className={styles.teamCardStats}>
+                    <span>생존 {team.aliveCount}/{team.members.length}</span>
+                    <span>HP {team.totalHp}</span>
+                    <span>{team.totalScore}점</span>
+                  </div>
+                  <div className={styles.teamCardMembers}>
+                    {team.members.map((m) => (
+                      <span key={m.userId} className={`${styles.teamCardMember} ${m.downed ? styles.teamCardMemberKo : ""}`}>
+                        {m.nickname}
+                        {m.userId === userId && <em> 나</em>}
+                        <i>{m.downed ? "KO" : `${m.hp}`}</i>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 포디움 */}
       {showPodium && (
         <div className={styles.podium}>
@@ -123,6 +179,9 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
                   {isMe && <span className={styles.meTag}>나</span>}
                 </div>
                 <div className={styles.podiumScore}>{r.score}<small>점</small></div>
+                <div className={r.downed ? styles.podiumKo : styles.podiumHp}>
+                  {r.downed ? "쓰러짐" : `HP ${r.hp}`}
+                </div>
                 <div className={styles.podiumBar} style={{
                   height: isCenter ? "80px" : actualRank === 2 ? "56px" : "40px",
                   background: `linear-gradient(180deg, ${PODIUM_COLORS[actualRank - 1] || "#636e72"}, transparent)`,
@@ -152,11 +211,15 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
                     <span className={styles.rankName}>
                       {r.nickname}
                       {isMe && <span className={styles.meTag}>나</span>}
+                      {r.downed
+                        ? <span className={styles.koTag}>쓰러짐</span>
+                        : <span className={styles.aliveTag}>생존 HP {r.hp}</span>}
                     </span>
                     <div className={styles.rankStats}>
                       <span className={styles.statG}>{r.correct}O</span>
                       <span className={styles.statR}>{r.wrong}X</span>
                       <span className={styles.statM}>{r.missed}-</span>
+                      {r.maxCombo > 1 && <span className={styles.statCombo}>🔥{r.maxCombo}</span>}
                     </div>
                   </div>
                   <span className={styles.rankScore}>{r.score}<small>점</small></span>
@@ -186,7 +249,7 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
               <span className={styles.analysisBlockTitle}>잘한 영역</span>
               <div className={styles.analysisPills}>
                 {(analysis.strengths.length > 0 ? analysis.strengths : ["정답 문항을 먼저 복습"]).map((item) => (
-                  <span key={item} className={styles.analysisPillGood}>{item}</span>
+                  <span key={item} className={styles.analysisPillGood}><Latex text={item} /></span>
                 ))}
               </div>
             </div>
@@ -194,7 +257,7 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
               <span className={styles.analysisBlockTitle}>보완할 영역</span>
               <div className={styles.analysisPills}>
                 {(analysis.needsPractice.length > 0 ? analysis.needsPractice : ["오답 없음"]).map((item) => (
-                  <span key={item} className={styles.analysisPillWarn}>{item}</span>
+                  <span key={item} className={styles.analysisPillWarn}><Latex text={item} /></span>
                 ))}
               </div>
             </div>
@@ -203,7 +266,7 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
           {analysis.recommendedReview.length > 0 && (
             <div className={styles.analysisAdvice}>
               {analysis.recommendedReview.map((item, idx) => (
-                <p key={idx}>{item}</p>
+                <p key={idx}><Latex text={item} /></p>
               ))}
             </div>
           )}
@@ -212,7 +275,7 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
             <div className={styles.categoryBreakdown}>
               {analysis.byCategory.slice(0, 4).map((row) => (
                 <div key={row.category} className={styles.categoryRow}>
-                  <span className={styles.categoryName}>{row.category}</span>
+                  <span className={styles.categoryName}><Latex text={row.category} /></span>
                   <div className={styles.categoryTrack}>
                     <div className={styles.categoryFill} style={{ width: `${row.accuracy}%` }} />
                   </div>

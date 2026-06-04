@@ -351,3 +351,71 @@
   .gradeGrid { gap: 6px; padding: 0 8px 8px; }
   .gradeBtn { min-height: 48px; padding: 7px; }
 }
+
+/* ════════════ 게임 설명서 ════════════ */
+.rulesCard {
+  margin: 0 0 0.9rem;
+  border-radius: var(--radius);
+  background: #fffdf7;
+  border: 2px solid rgba(22, 138, 143, 0.2);
+  box-shadow: 0 6px 0 rgba(22, 138, 143, 0.08), var(--shadow);
+  overflow: hidden;
+}
+
+.rulesToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.8rem 0.95rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.rulesToggleTitle {
+  font-size: 0.92rem;
+  font-weight: 950;
+  color: var(--primary-dark);
+}
+
+.rulesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.2rem 0.95rem 0.95rem;
+}
+
+.ruleItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.ruleIcon {
+  flex: 0 0 auto;
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+.ruleText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ruleTitle {
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.ruleDesc {
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  word-break: keep-all;
+}

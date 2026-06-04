@@ -9,6 +9,7 @@ import type {
   QuestionReview,
   TimePressureData,
   AnswerCorrectData,
+  PlayerScoreData,
 } from "./types";
 import NicknamePage from "./pages/NicknamePage";
 import SubjectSelectPage from "./pages/SubjectSelectPage";
@@ -41,6 +42,7 @@ function App() {
   const [timePressure, setTimePressure] = useState<TimePressureData | null>(null);
   const [answerCorrect, setAnswerCorrect] = useState<AnswerCorrectData | null>(null);
   const [answeredUsers, setAnsweredUsers] = useState<Set<string>>(new Set());
+  const [battleScores, setBattleScores] = useState<PlayerScoreData[]>([]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [reviewHistory, setReviewHistory] = useState<QuestionReview[]>([]);
   const selectedIndexRef = useRef<number | null>(null);
@@ -127,6 +129,7 @@ function App() {
       setCurrentQuestion(null);
       setGameResult(null);
       setAnsweredUsers(new Set());
+      setBattleScores([]);
       setReviewHistory([]);
       selectedIndexRef.current = null;
       setCurrentPage("quiz");
@@ -152,6 +155,7 @@ function App() {
       setTimePressure(null);
       setAnswerCorrect(null);
       setQuestionResult(data);
+      setBattleScores(data.scores);
       // 리뷰 히스토리에 추가
       const myResult = data.results.find((r) => r.userId === userId);
       setReviewHistory((h) => [...h, {
@@ -315,6 +319,7 @@ function App() {
           matchInfo={matchInfo}
           timePressure={timePressure}
           answerCorrect={answerCorrect}
+          battleScores={battleScores}
         />
       );
     case "result":

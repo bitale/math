@@ -41,7 +41,7 @@ function startQuestionForRoom(io: Server, roomId: string): void {
   // 봇 답변 스케줄
   roomManager.scheduleBotAnswers(
     roomId,
-    (botUserId, isCorrect) => {
+    (botUserId, isCorrect, isFirstCorrect, comboNext) => {
       io.to(`room_${roomId}`).emit("answerSubmitted", { userId: botUserId });
       if (isCorrect) {
         const bot = roomManager.getRoom(roomId)?.users.find((u) => u.userId === botUserId);
@@ -49,6 +49,8 @@ function startQuestionForRoom(io: Server, roomId: string): void {
           userId: botUserId,
           nickname: bot?.nickname ?? "상대",
           isBot: bot?.isBot ?? true,
+          isFirst: isFirstCorrect,
+          combo: comboNext,
         });
       }
       const pressure = roomManager.applyTimePressure(roomId, botUserId, () => handleTimeUp(io, roomId));
@@ -70,7 +72,10 @@ function processQuestionResult(io: Server, roomId: string): void {
 
   io.to(`room_${roomId}`).emit("questionResult", result);
 
-  if (result.isLastQuestion) {
+  const tko = result.battle.tkoWinnerTeam !== null;
+  if (tko) roomManager.endGame(roomId); // 더 이상 진행되지 않도록 종료 처리
+
+  if (result.isLastQuestion || tko) {
     setTimeout(() => {
       const gameResult = roomManager.getGameResult(roomId);
       if (gameResult) io.to(`room_${roomId}`).emit("gameFinished", gameResult);
@@ -235,6 +240,8 @@ export function initializeSocket(io: Server): void {
           userId: state.userId,
           nickname: user?.nickname ?? state.nickname ?? "참가자",
           isBot: user?.isBot ?? false,
+          isFirst: result.isFirstCorrect ?? false,
+          combo: result.comboNext ?? 0,
         });
       }
 

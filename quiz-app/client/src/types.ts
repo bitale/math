@@ -9,6 +9,7 @@ export interface RoomUser {
   nickname: string;
   isBot: boolean;
   connected: boolean;
+  teamId: number;
 }
 
 export interface MatchInfo {
@@ -52,19 +53,47 @@ export interface QuestionResultData {
     userId: string;
     nickname: string;
     isBot: boolean;
+    teamId: number;
     selectedIndex: number | null;
     isCorrect: boolean;
+    scoreDelta: number;
+    isFirstCorrect: boolean;
+    damageTaken: number;
+    hp: number;
+    maxHp: number;
+    combo: number;
+    downed: boolean;
+    justDowned: boolean;
   }>;
-  scores: Array<{
-    userId: string;
-    nickname: string;
-    isBot: boolean;
-    score: number;
-    correct: number;
-    wrong: number;
-    missed: number;
-  }>;
+  scores: PlayerScoreData[];
+  battle: {
+    koUserIds: string[];
+    teamAttacks: Array<{
+      teamId: number;
+      attack: number;
+      firstCorrectNickname: string | null;
+      combo: number;
+      targets: Array<{ userId: string; nickname: string; damage: number }>;
+    }>;
+    tkoWinnerTeam: number | null;
+  };
   isLastQuestion: boolean;
+}
+
+export interface PlayerScoreData {
+  userId: string;
+  nickname: string;
+  isBot: boolean;
+  teamId: number;
+  score: number;
+  correct: number;
+  wrong: number;
+  missed: number;
+  hp: number;
+  maxHp: number;
+  combo: number;
+  maxCombo: number;
+  downed: boolean;
 }
 
 export interface TimePressureData {
@@ -78,6 +107,8 @@ export interface AnswerCorrectData {
   userId: string;
   nickname: string;
   isBot: boolean;
+  isFirst: boolean;
+  combo: number;
 }
 
 export interface QuestionReview {
@@ -126,18 +157,47 @@ export interface LearningAnalysis {
   }>;
 }
 
+export interface TeamSummary {
+  teamId: number;
+  aliveCount: number;
+  totalHp: number;
+  totalScore: number;
+  members: Array<{
+    userId: string;
+    nickname: string;
+    isBot: boolean;
+    score: number;
+    hp: number;
+    maxHp: number;
+    downed: boolean;
+    maxCombo: number;
+  }>;
+}
+
 export interface GameResult {
   rankings: Array<{
     rank: number;
     userId: string;
     nickname: string;
     isBot: boolean;
+    teamId: number;
     score: number;
     correct: number;
     wrong: number;
     missed: number;
+    hp: number;
+    maxHp: number;
+    combo: number;
+    maxCombo: number;
+    downed: boolean;
   }>;
   gradeKey: string;
+  teamBattle: {
+    isTeamBattle: boolean;
+    winnerTeam: number | null;
+    tko: boolean;
+    teams: TeamSummary[];
+  };
   reviewsByUser?: Record<string, QuestionReview[]>;
   analysisByUser?: Record<string, LearningAnalysis>;
 }

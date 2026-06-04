@@ -8,6 +8,16 @@ export interface BattleSettings {
   difficulty2Bonus: number;
   difficulty3Bonus: number;
   minRemainingSeconds: number;
+  // ── HP 배틀 / 콤보 / 선취 ──
+  maxHp: number;               // 시작 체력
+  hitBaseDamage: number;       // 오답/미응답 기본 피해
+  missExtraDamage: number;     // 미응답 추가 피해
+  firstStrikeDamage: number;   // 선취(가장 먼저 정답) 시 오답자에게 가하는 추가 피해
+  comboDamageStep: number;     // 선취자 콤보 1단계당 추가 피해
+  comboDamageMaxSteps: number; // 콤보 피해 증폭 최대 단계
+  firstCorrectBonus: number;   // 선취 추가 점수
+  comboBonusStep: number;      // 콤보 1단계당 점수 배수 증가 (0.25 = +25%)
+  comboBonusMaxSteps: number;  // 콤보 점수 배수 최대 단계
 }
 
 export interface FlowSettings {
@@ -45,6 +55,15 @@ const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   difficulty2Bonus: 1,
   difficulty3Bonus: 3,
   minRemainingSeconds: 3,
+  maxHp: 100,
+  hitBaseDamage: 16,
+  missExtraDamage: 6,
+  firstStrikeDamage: 8,
+  comboDamageStep: 3,
+  comboDamageMaxSteps: 5,
+  firstCorrectBonus: 2,
+  comboBonusStep: 0.25,
+  comboBonusMaxSteps: 4,
 };
 
 const DEFAULT_FLOW_SETTINGS: FlowSettings = {
@@ -106,6 +125,15 @@ export function updateBattleSettings(patch: Partial<BattleSettings>): BattleSett
     difficulty2Bonus: clampNumber(patch.difficulty2Bonus, 0, 20, battleSettings.difficulty2Bonus),
     difficulty3Bonus: clampNumber(patch.difficulty3Bonus, 0, 20, battleSettings.difficulty3Bonus),
     minRemainingSeconds: clampNumber(patch.minRemainingSeconds, 1, 20, battleSettings.minRemainingSeconds),
+    maxHp: clampNumber(patch.maxHp, 20, 500, battleSettings.maxHp),
+    hitBaseDamage: clampNumber(patch.hitBaseDamage, 0, 100, battleSettings.hitBaseDamage),
+    missExtraDamage: clampNumber(patch.missExtraDamage, 0, 100, battleSettings.missExtraDamage),
+    firstStrikeDamage: clampNumber(patch.firstStrikeDamage, 0, 100, battleSettings.firstStrikeDamage),
+    comboDamageStep: clampNumber(patch.comboDamageStep, 0, 50, battleSettings.comboDamageStep),
+    comboDamageMaxSteps: clampNumber(patch.comboDamageMaxSteps, 0, 20, battleSettings.comboDamageMaxSteps),
+    firstCorrectBonus: clampNumber(patch.firstCorrectBonus, 0, 20, battleSettings.firstCorrectBonus),
+    comboBonusStep: clampNumber(patch.comboBonusStep, 0, 2, battleSettings.comboBonusStep),
+    comboBonusMaxSteps: clampNumber(patch.comboBonusMaxSteps, 0, 20, battleSettings.comboBonusMaxSteps),
   };
 
   const ratios = [next.pressureFastRatio, next.pressureMidRatio, next.pressureSlowRatio].sort((a, b) => a - b);
