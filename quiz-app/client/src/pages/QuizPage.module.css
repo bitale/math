@@ -1956,3 +1956,416 @@
   .teamMemberName { max-width: 52px; }
   .battleLogAlly, .battleLogFoe, .battleLogTko { font-size: 0.68rem; padding: 3px 8px; }
 }
+
+/* ════════════ 사이버펑크 배틀 스킨 ════════════ */
+
+.container {
+  --red: #ff315f;
+  --blue: #00e5ff;
+  --green: #00ff95;
+  --orange: #ffd400;
+  --ink: #f5fbff;
+  max-width: min(1120px, 100%);
+  background:
+    linear-gradient(180deg, rgba(2, 3, 10, 0.18), rgba(2, 3, 10, 0.82)),
+    url("/assets/quiz-arena-bg.png") center top / cover fixed;
+}
+
+.container::before {
+  background:
+    linear-gradient(90deg, rgba(255, 43, 214, 0.18), transparent 22%, transparent 78%, rgba(0, 229, 255, 0.18)),
+    repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.055) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(255, 43, 214, 0.04) 0 1px, transparent 1px 42px);
+  mix-blend-mode: screen;
+}
+
+.container::after {
+  background: radial-gradient(circle at 50% 48%, rgba(255, 212, 0, 0.18), transparent 24%);
+}
+
+.battleWon::after {
+  background: rgba(0, 255, 149, 0.28);
+}
+
+.battleLost::after {
+  background: rgba(255, 49, 95, 0.3);
+}
+
+.particle {
+  width: 3px;
+  height: 22px;
+  border-radius: 0;
+  background: rgba(0, 229, 255, 0.82);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.9);
+}
+
+.particle:nth-child(2n) { background: rgba(255, 43, 214, 0.76); box-shadow: 0 0 14px rgba(255, 43, 214, 0.85); }
+.particle:nth-child(3n) { background: rgba(255, 212, 0, 0.86); width: 18px; height: 3px; box-shadow: 0 0 16px rgba(255, 212, 0, 0.85); }
+.particle:nth-child(4n) { background: rgba(0, 255, 149, 0.76); border-radius: 0; box-shadow: 0 0 16px rgba(0, 255, 149, 0.75); }
+
+.speedLines,
+.sparkField {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.speedLines span {
+  position: absolute;
+  right: -26vw;
+  width: clamp(90px, 22vw, 280px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.95), rgba(255, 43, 214, 0.75), transparent);
+  filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.8));
+  animation: speedSlash linear infinite;
+}
+
+.sparkField i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #ffd400;
+  box-shadow: 0 0 14px #ffd400, 0 0 24px rgba(255, 43, 214, 0.7);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  animation: sparkBlink 1.05s steps(2, end) infinite;
+}
+
+@keyframes speedSlash {
+  from { transform: translateX(0) skewX(-22deg); opacity: 0; }
+  12% { opacity: 0.95; }
+  to { transform: translateX(-145vw) skewX(-22deg); opacity: 0; }
+}
+
+@keyframes sparkBlink {
+  0%, 100% { opacity: 0.1; transform: scale(0.55) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.35) rotate(45deg); }
+}
+
+.connectionBar,
+.timePressureNotice,
+.correctToast,
+.teamPanel,
+.playersBar,
+.questionCard,
+.choiceBtn,
+.waitingBar,
+.resultOverlay,
+.liveScores,
+.scoreRow,
+.explanation {
+  background: linear-gradient(135deg, rgba(5, 13, 28, 0.9), rgba(11, 24, 45, 0.78));
+  border-color: rgba(0, 229, 255, 0.34);
+  color: var(--text);
+  box-shadow: var(--shadow-glow), var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.topSection,
+.battleHud,
+.playersBar,
+.questionCard,
+.choices,
+.waitingBar,
+.resultOverlay {
+  filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.45));
+}
+
+.questionBadge {
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.85), 0 0 22px rgba(255, 43, 214, 0.5);
+}
+
+.questionTotal,
+.teamAlive,
+.pressureMeter,
+.questionText,
+.choiceText,
+.scoreName,
+.nextTimerLabel,
+.loading p,
+.finalizing p {
+  color: var(--text-secondary);
+}
+
+.hardBadge,
+.pointsBadge,
+.correctBadge,
+.teamMineTag,
+.teamEnemyTag,
+.firstStrikeTag {
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.hardBadge,
+.pointsBadge {
+  color: #02030a;
+  background: linear-gradient(135deg, #ffd400, #ff7a00);
+  border-color: rgba(255, 212, 0, 0.7);
+  box-shadow: 0 0 16px rgba(255, 212, 0, 0.35);
+}
+
+.progressBar,
+.pressureTrack,
+.hpBar,
+.playerHpBar,
+.scoreHpBar,
+.nextTimerTrack,
+.timerTrack {
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.22);
+}
+
+.progressFill,
+.pressureFill {
+  background: linear-gradient(90deg, #ff315f, #ff2bd6, #ffd400, #00e5ff);
+  box-shadow: 0 0 16px rgba(255, 43, 214, 0.75);
+}
+
+.timerBox {
+  background: radial-gradient(circle, rgba(255, 212, 0, 0.18), rgba(3, 7, 17, 0.94));
+  border: 1px solid rgba(255, 212, 0, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 43, 214, 0.35), 0 0 30px rgba(255, 212, 0, 0.32), var(--shadow);
+}
+
+.timerArc,
+.nextTimerArc {
+  stroke: #00e5ff;
+  filter: drop-shadow(0 0 5px rgba(0, 229, 255, 0.95));
+}
+
+.timerNum,
+.nextTimerNum {
+  color: #ffd400;
+  text-shadow: 0 0 12px rgba(255, 212, 0, 0.85);
+}
+
+.timerWarning .timerArc { stroke: #ffd400; }
+.timerWarning .timerNum { color: #ffd400; }
+.timerUrgent .timerArc { stroke: #ff315f; }
+.timerUrgent .timerNum { color: #ff315f; text-shadow: 0 0 14px rgba(255, 49, 95, 0.95); }
+
+.teamMine {
+  border-color: rgba(0, 229, 255, 0.58);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.28), 0 0 26px rgba(0, 229, 255, 0.18), var(--shadow);
+}
+
+.teamEnemy {
+  border-color: rgba(255, 43, 214, 0.58);
+  box-shadow: 0 0 0 1px rgba(255, 43, 214, 0.24), 0 0 26px rgba(255, 43, 214, 0.2), var(--shadow);
+}
+
+.teamName {
+  color: #ffffff;
+}
+
+.teamMineTag {
+  color: #00151a;
+  background: #00e5ff;
+  border-color: rgba(0, 229, 255, 0.9);
+}
+
+.teamEnemyTag {
+  color: #1b0013;
+  background: #ff2bd6;
+  border-color: rgba(255, 43, 214, 0.9);
+}
+
+.vsCore {
+  color: #02030a;
+  background: linear-gradient(135deg, #ffd400, #ff2bd6 52%, #00e5ff);
+  border-color: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 0 24px rgba(255, 212, 0, 0.55), 0 0 42px rgba(255, 43, 214, 0.28);
+  animation: corePulse 0.72s ease-in-out infinite alternate;
+}
+
+.vsCore i {
+  border-color: rgba(0, 229, 255, 0.8);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.5);
+}
+
+@keyframes corePulse {
+  from { transform: scale(0.98); filter: saturate(1); }
+  to { transform: scale(1.06); filter: saturate(1.35); }
+}
+
+.teamMember,
+.playerChip,
+.scoreRow {
+  background: rgba(2, 8, 19, 0.72);
+  border-color: rgba(0, 229, 255, 0.22);
+  color: var(--text-secondary);
+}
+
+.teamMemberMe,
+.playerMe,
+.scoreRowMe {
+  color: #e9feff;
+  background: rgba(0, 229, 255, 0.13);
+  border-color: rgba(0, 229, 255, 0.62);
+}
+
+.playerAnswered,
+.playerCorrect,
+.choiceCorrect,
+.bannerCorrect {
+  background: rgba(0, 255, 149, 0.14);
+  border-color: rgba(0, 255, 149, 0.72);
+  box-shadow: 0 0 22px rgba(0, 255, 149, 0.18);
+}
+
+.playerWrong,
+.choiceWrong,
+.bannerWrong,
+.downedBar {
+  background: rgba(255, 49, 95, 0.15);
+  border-color: rgba(255, 49, 95, 0.72);
+  box-shadow: 0 0 22px rgba(255, 49, 95, 0.2);
+}
+
+.bannerMissed {
+  background: rgba(255, 212, 0, 0.13);
+  border-color: rgba(255, 212, 0, 0.64);
+}
+
+.questionCard {
+  border-left: 4px solid #00e5ff;
+  border-right: 4px solid #ff2bd6;
+}
+
+.questionText {
+  font-weight: 850;
+  text-shadow: 0 0 18px rgba(0, 229, 255, 0.18);
+}
+
+.questionText :global(.katex) {
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+
+.choiceBtn {
+  border-radius: 6px;
+  border-width: 1px;
+  background: linear-gradient(135deg, rgba(5, 13, 28, 0.94), rgba(20, 12, 40, 0.82));
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+
+.choiceBtn::before {
+  width: 4px;
+  box-shadow: 0 0 18px var(--choice-color, #00e5ff);
+}
+
+.choiceBtn:hover:not(:disabled) {
+  border-color: var(--choice-color, #00e5ff);
+  box-shadow: 0 0 0 1px var(--choice-color, #00e5ff), 0 0 26px color-mix(in srgb, var(--choice-color, #00e5ff) 55%, transparent), var(--shadow);
+}
+
+.choiceRed { --choice-color: #ff315f; background: linear-gradient(135deg, rgba(255, 49, 95, 0.2), rgba(8, 12, 28, 0.9)); }
+.choiceBlue { --choice-color: #00e5ff; background: linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(8, 12, 28, 0.9)); }
+.choiceGreen { --choice-color: #00ff95; background: linear-gradient(135deg, rgba(0, 255, 149, 0.16), rgba(8, 12, 28, 0.9)); }
+.choiceOrange { --choice-color: #ffd400; background: linear-gradient(135deg, rgba(255, 212, 0, 0.16), rgba(8, 12, 28, 0.9)); }
+
+.choiceShape {
+  border-radius: 4px;
+  color: #02030a;
+  background: var(--choice-color, #00e5ff);
+  box-shadow: 0 0 16px var(--choice-color, #00e5ff);
+}
+
+.choiceText {
+  color: #f7fbff;
+  font-weight: 850;
+}
+
+.hpHigh,
+.playerHpFill.hpHigh,
+.scoreHpFill.hpHigh { background: linear-gradient(90deg, #00ff95, #00e5ff); box-shadow: 0 0 12px rgba(0, 255, 149, 0.7); }
+.hpMid,
+.playerHpFill.hpMid,
+.scoreHpFill.hpMid { background: linear-gradient(90deg, #ffd400, #ff7a00); box-shadow: 0 0 12px rgba(255, 212, 0, 0.7); }
+.hpLow,
+.playerHpFill.hpLow,
+.scoreHpFill.hpLow { background: linear-gradient(90deg, #ff315f, #ff2bd6); box-shadow: 0 0 14px rgba(255, 49, 95, 0.8); }
+.hpEmpty,
+.playerHpFill.hpEmpty,
+.scoreHpFill.hpEmpty { background: rgba(95, 112, 130, 0.55); }
+
+.comboInline,
+.teamMemberCombo,
+.scorePoints,
+.scoreDelta {
+  color: #ffd400;
+  text-shadow: 0 0 10px rgba(255, 212, 0, 0.75);
+}
+
+.timePressureNotice strong,
+.correctToast strong,
+.liveScoresTitle,
+.pressureMeter span,
+.teamMemberHp {
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
+}
+
+.pressureDamage strong,
+.bannerDmg,
+.koTag,
+.teamMemberKoTag {
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff315f, #ff2bd6);
+}
+
+.correctToastMe,
+.correctToastFirst,
+.pressureAttack {
+  background: linear-gradient(135deg, rgba(255, 212, 0, 0.18), rgba(6, 16, 34, 0.9));
+  border-color: rgba(255, 212, 0, 0.64);
+}
+
+.bannerDelta,
+.battleLogTko {
+  color: #02030a;
+  background: linear-gradient(135deg, #ffd400, #ff7a00);
+  box-shadow: 0 0 18px rgba(255, 212, 0, 0.34);
+}
+
+.battleLogAlly {
+  color: #e9feff;
+  background: rgba(0, 229, 255, 0.14);
+  border-color: rgba(0, 229, 255, 0.48);
+}
+
+.battleLogFoe,
+.battleLogKo {
+  color: #ffffff;
+  background: rgba(255, 49, 95, 0.18);
+  border-color: rgba(255, 49, 95, 0.5);
+}
+
+.explanation {
+  border-left-color: #ffd400;
+  color: #d8e8f4;
+}
+
+.loadingDots span {
+  background: #00e5ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.85);
+}
+
+.loadingDots span:nth-child(2) { background: #ff2bd6; box-shadow: 0 0 16px rgba(255, 43, 214, 0.85); }
+.loadingDots span:nth-child(3) { background: #ffd400; box-shadow: 0 0 16px rgba(255, 212, 0, 0.85); }
+
+@media (max-width: 600px) {
+  .container {
+    background-attachment: scroll;
+    background-position: center top;
+  }
+
+  .speedLines span {
+    width: 46vw;
+  }
+}

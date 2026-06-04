@@ -15,10 +15,11 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 16% 18%, rgba(255, 107, 107, 0.15), transparent 24%),
-    radial-gradient(circle at 88% 16%, rgba(108, 99, 255, 0.13), transparent 24%),
-    radial-gradient(circle at 72% 88%, rgba(53, 201, 155, 0.15), transparent 28%),
-    repeating-linear-gradient(135deg, rgba(34, 49, 58, 0.035) 0 2px, transparent 2px 18px);
+    linear-gradient(180deg, rgba(2, 3, 10, 0.15), rgba(2, 3, 10, 0.78)),
+    radial-gradient(circle at 16% 18%, rgba(255, 43, 214, 0.22), transparent 24%),
+    radial-gradient(circle at 88% 16%, rgba(0, 229, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 72% 88%, rgba(0, 255, 149, 0.14), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(0, 229, 255, 0.055) 0 1px, transparent 1px 18px);
 }
 
 .luxBackdrop {
@@ -26,8 +27,8 @@
   inset: -12%;
   pointer-events: none;
   background:
-    linear-gradient(120deg, transparent 28%, rgba(255, 209, 102, 0.18) 48%, transparent 66%),
-    linear-gradient(245deg, transparent 28%, rgba(22, 138, 143, 0.12) 52%, transparent 72%);
+    linear-gradient(120deg, transparent 28%, rgba(255, 212, 0, 0.2) 48%, transparent 66%),
+    linear-gradient(245deg, transparent 28%, rgba(0, 229, 255, 0.18) 52%, transparent 72%);
   filter: blur(10px);
   animation: colorSweep 7s ease-in-out infinite alternate;
 }
@@ -40,8 +41,8 @@
 .card {
   position: relative;
   z-index: 1;
-  background: var(--panel);
-  border: 2px solid rgba(34, 49, 58, 0.10);
+  background: linear-gradient(135deg, rgba(5, 13, 28, 0.92), rgba(11, 24, 45, 0.82));
+  border: 1px solid rgba(0, 229, 255, 0.36);
   border-radius: var(--radius);
   padding: 2.6rem 2.2rem;
   width: 100%;
@@ -49,7 +50,8 @@
   min-width: 0;
   text-align: center;
   animation: fadeIn 0.35s ease;
-  box-shadow: 0 10px 0 rgba(34, 49, 58, 0.07), var(--shadow-lg);
+  box-shadow: var(--shadow-glow), var(--shadow-lg);
+  backdrop-filter: blur(10px);
 }
 
 .logoWrap {
@@ -68,8 +70,8 @@
   position: relative;
   z-index: 1;
   animation: popIn 0.55s ease;
-  border: 3px solid #fffdf7;
-  box-shadow: 0 8px 0 rgba(255, 209, 102, 0.50), var(--shadow);
+  border: 2px solid rgba(255, 212, 0, 0.86);
+  box-shadow: 0 0 24px rgba(255, 212, 0, 0.42), var(--shadow);
 }
 
 .logoRing {
@@ -77,7 +79,8 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  border: 3px dashed rgba(22, 138, 143, 0.28);
+  border: 2px dashed rgba(0, 229, 255, 0.58);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.22);
   animation: ringSpin 5s linear infinite;
 }
 
@@ -90,6 +93,7 @@
   font-size: 2rem;
   font-weight: 950;
   color: var(--text);
+  text-shadow: 0 0 14px rgba(0, 229, 255, 0.6), 0 0 26px rgba(255, 43, 214, 0.35);
   margin-bottom: 0.25rem;
 }
 
@@ -118,16 +122,21 @@
   font-weight: 750;
   text-align: center;
   letter-spacing: 0;
-  background: #fff8e8;
-  border: 2px solid rgba(34, 49, 58, 0.14);
+  background: rgba(2, 8, 19, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.48);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: #f7fbff;
+  box-shadow: inset 0 0 18px rgba(0, 229, 255, 0.12), 0 0 18px rgba(0, 0, 0, 0.28);
+}
+
+.input::placeholder {
+  color: #6f8ca5;
 }
 
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(22, 138, 143, 0.12);
-  background: #fffdf7;
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.18), 0 0 26px rgba(0, 229, 255, 0.28);
+  background: rgba(4, 14, 31, 0.96);
 }
 
 .inputOk {
@@ -164,13 +173,13 @@
   padding: 1rem;
   font-size: 1.08rem;
   font-weight: 950;
-  color: #2b2100;
-  background: linear-gradient(135deg, #ffd166, #ff8a7a 55%, #35c99b);
+  color: #02030a;
+  background: linear-gradient(135deg, #ffd400, #ff2bd6 55%, #00e5ff);
   border-radius: var(--radius-sm);
-  border: 2px solid rgba(34, 49, 58, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 0 rgba(34, 49, 58, 0.10);
+  box-shadow: 0 0 24px rgba(255, 43, 214, 0.28), var(--shadow);
 }
 
 .startBtn::before {
@@ -188,8 +197,8 @@
 }
 
 .startBtn:disabled {
-  background: #e9ecef;
-  color: var(--text-dim);
+  background: rgba(35, 48, 64, 0.72);
+  color: #6f8ca5;
   box-shadow: none;
 }
 
