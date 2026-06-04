@@ -1,12 +1,12 @@
 import { FC } from "react";
 
 interface Props {
-  status: "idle" | "correct" | "wrong";
+  status: "idle" | "correct" | "wrong" | "revealed";
   message?: string;
 }
 
 export const AnswerFeedback: FC<Props> = ({ status, message }) => {
-  if (status === "idle") return null;
+  if (status === "idle" || status === "revealed") return null;
 
   const isCorrect = status === "correct";
   const colorClasses = isCorrect

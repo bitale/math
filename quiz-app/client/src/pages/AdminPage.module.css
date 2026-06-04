@@ -1,0 +1,162 @@
+.page {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: clamp(14px, 4vw, 32px);
+  color: #fff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  color: #8b5600;
+  font-weight: 900;
+  font-size: 0.78rem;
+}
+
+.header h1 {
+  font-size: clamp(1.45rem, 5vw, 2.3rem);
+  line-height: 1.1;
+}
+
+.playLink,
+.actions button {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  padding: 0.72rem 0.95rem;
+  background: #ffd166;
+  color: #2b2100;
+  font-weight: 950;
+  box-shadow: 0 7px 0 rgba(34,49,58,0.10);
+}
+
+.summary,
+.panel {
+  border: 1px solid rgba(0,245,255,0.28);
+  background: rgba(5,7,20,0.78);
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.32);
+}
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  color: rgba(255,255,255,0.72);
+}
+
+.summary strong {
+  color: #8cffc7;
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.panel h2 {
+  margin: 1.15rem 0 0.7rem;
+  color: #8b5600;
+  font-size: 0.98rem;
+  font-weight: 950;
+}
+
+.panel h2:first-child {
+  margin-top: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+}
+
+.field span {
+  font-weight: 900;
+}
+
+.field small {
+  color: rgba(255,255,255,0.48);
+  font-weight: 700;
+}
+
+.field input {
+  padding: 0.62rem 0.7rem;
+  border-width: 1px;
+  font-weight: 900;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.preview div {
+  padding: 0.85rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255,43,214,0.16), rgba(0,245,255,0.11));
+  border: 1px solid rgba(255,43,214,0.22);
+}
+
+.preview span {
+  display: block;
+  color: rgba(255,255,255,0.62);
+  font-weight: 800;
+}
+
+.preview strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.4rem;
+  color: #8b5600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.actions .secondary {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  box-shadow: none;
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+@media (max-width: 680px) {
+  .header,
+  .summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .grid,
+  .preview {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    justify-content: stretch;
+  }
+  .actions button {
+    flex: 1;
+  }
+}

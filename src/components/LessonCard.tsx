@@ -4,6 +4,7 @@ import MathText from "./MathText";
 
 interface Props {
   lesson: Lesson;
+  displayNum?: number;
   completed: boolean;
   onClick: () => void;
 }
@@ -16,7 +17,7 @@ const levelColor: Record<string, string> = {
   심화: "bg-purple-100 text-purple-800",
 };
 
-export const LessonCard: FC<Props> = ({ lesson, completed, onClick }) => {
+export const LessonCard: FC<Props> = ({ lesson, displayNum, completed, onClick }) => {
   return (
     <button
       type="button"
@@ -25,7 +26,7 @@ export const LessonCard: FC<Props> = ({ lesson, completed, onClick }) => {
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-navy-500">
-          #{String(lesson.id).padStart(2, "0")} · {lesson.category}
+          #{String(displayNum ?? lesson.id).padStart(2, "0")} · {lesson.category}
         </span>
         <span
           className={`chip ${
@@ -37,7 +38,7 @@ export const LessonCard: FC<Props> = ({ lesson, completed, onClick }) => {
           {completed ? "완료" : "미완료"}
         </span>
       </div>
-      <h3 className="mt-3 text-lg font-bold text-navy-900">{lesson.title}</h3>
+      <h3 className="mt-3 text-lg font-bold text-navy-900"><MathText>{lesson.title}</MathText></h3>
       <div className="mt-2 text-sm text-navy-700 line-clamp-3 leading-6">
         <MathText>{lesson.question}</MathText>
       </div>

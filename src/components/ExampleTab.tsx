@@ -14,7 +14,7 @@ export const ExampleTab: FC<Props> = ({ lesson }) => {
           <div className="text-xs font-semibold text-navy-600">
             예제 {idx + 1}
           </div>
-          <h3 className="mt-1 text-lg font-bold text-navy-900">{ex.title}</h3>
+          <h3 className="mt-1 text-lg font-bold text-navy-900"><MathText>{ex.title}</MathText></h3>
           <div className="mt-3 card p-4 bg-navy-50/40 border-navy-100">
             <div className="text-xs font-semibold text-navy-700">문제</div>
             <div className="mt-1 text-[15px] text-navy-900 leading-8">

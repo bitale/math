@@ -3,7 +3,22 @@ import { SubjectId, WrongNoteEntry } from "../types";
 let _prefix = "mla";
 
 export function setStorageSubject(subject: SubjectId): void {
-  _prefix = subject === "analysis" ? "mla" : "stla";
+  const prefixMap: Record<SubjectId, string> = {
+    preschool: "pres",
+    elementary: "elem",
+    "middle-school": "msth",
+    precalculus: "pcal",
+    "calculus-1": "cal1",
+    "calculus-2": "cal2",
+    "linear-vector": "lnvc",
+    multivariable: "mvcl",
+    "diff-eq": "dfeq",
+    "real-analysis": "mla",
+    "set-theory": "stla",
+    algebra: "alg",
+    "complex-analysis": "cxa",
+  };
+  _prefix = prefixMap[subject] ?? subject;
 }
 
 function key(name: string): string {

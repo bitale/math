@@ -78,7 +78,7 @@ export const HomePage: FC<Props> = ({
           {lastLesson ? (
             <>
               <div className="mt-2 text-lg font-bold text-navy-900">
-                #{lastLesson.id}. {lastLesson.title}
+                <MathText>{lastLesson.title}</MathText>
               </div>
               <div className="mt-2 text-xs text-navy-600 line-clamp-3 leading-5">
                 <MathText>{lastLesson.question}</MathText>

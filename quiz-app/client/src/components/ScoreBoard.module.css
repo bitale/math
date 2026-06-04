@@ -1,0 +1,71 @@
+.board {
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.table td {
+  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.rankCell {
+  font-weight: 700;
+  width: 40px;
+  text-align: center;
+}
+
+.nicknameCell {
+  font-weight: 600;
+}
+
+.scoreCell {
+  font-weight: 700;
+  color: var(--primary);
+  text-align: right;
+}
+
+.correctCell {
+  color: var(--success);
+  text-align: center;
+}
+
+.wrongCell {
+  color: var(--danger);
+  text-align: center;
+}
+
+.missedCell {
+  color: var(--text-light);
+  text-align: center;
+}
+
+.highlight {
+  background: rgba(108, 92, 231, 0.06);
+}
+
+@media (max-width: 480px) {
+  .table th,
+  .table td {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}

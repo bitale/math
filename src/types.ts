@@ -18,6 +18,75 @@ export interface Problem {
   wrongAnalysis: string;
 }
 
+/* ── 그래프 시각화 타입 ── */
+
+export interface GraphFunction {
+  expr: string;          // 수학 표현식: "sin(x)", "x^2", "1/(1+x^2)"
+  color?: string;
+  label?: string;
+  dashed?: boolean;
+  domain?: [number, number];
+}
+
+export interface GraphPoint {
+  x: number;
+  y: number;
+  label?: string;
+  color?: string;
+  hollow?: boolean;
+}
+
+export interface GraphLine {
+  from: [number, number];
+  to: [number, number];
+  color?: string;
+  dashed?: boolean;
+  label?: string;
+}
+
+export interface GraphRegion {
+  fn: string;            // 상단 함수 표현식
+  fn2?: string;          // 하단 함수 (기본 0, 즉 x축)
+  from: number;
+  to: number;
+  color?: string;
+}
+
+export interface GraphShape {
+  type: "circle" | "ellipse";
+  cx: number;
+  cy: number;
+  rx: number;
+  ry?: number;
+  color?: string;
+  fill?: string;
+}
+
+export interface GraphAnnotation {
+  x: number;
+  y: number;
+  text: string;
+  color?: string;
+}
+
+export interface GraphConfig {
+  type: "function" | "geometry";
+  title?: string;
+  xRange?: [number, number];
+  yRange?: [number, number];
+  xLabel?: string;
+  yLabel?: string;
+  gridStep?: number;
+  functions?: GraphFunction[];
+  points?: GraphPoint[];
+  lines?: GraphLine[];
+  regions?: GraphRegion[];
+  shapes?: GraphShape[];
+  annotations?: GraphAnnotation[];
+}
+
+/* ── 레슨 타입 ── */
+
 export interface Lesson {
   id: number;
   title: string;
@@ -29,6 +98,7 @@ export interface Lesson {
     intuition: string;
     formula: string;
     summary: string;
+    visuals?: GraphConfig[];
   };
   examples: Example[];
   problems: Problem[];
@@ -51,7 +121,7 @@ export interface WrongNoteEntry {
   timestamp: number;
 }
 
-export type SubjectId = "analysis" | "set-theory";
+export type SubjectId = "preschool" | "elementary" | "middle-school" | "precalculus" | "calculus-1" | "calculus-2" | "linear-vector" | "multivariable" | "diff-eq" | "real-analysis" | "set-theory" | "algebra" | "complex-analysis";
 
 export interface SubjectConfig {
   id: SubjectId;

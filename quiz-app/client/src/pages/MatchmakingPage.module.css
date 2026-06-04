@@ -1,0 +1,399 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--page-padding);
+  position: relative;
+  overflow: hidden;
+}
+
+.container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 107, 107, 0.14), transparent 25%),
+    radial-gradient(circle at 86% 16%, rgba(108, 99, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 72% 88%, rgba(53, 201, 155, 0.14), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(34, 49, 58, 0.035) 0 2px, transparent 2px 18px);
+}
+
+.connBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  text-align: center;
+  padding: 0.4rem;
+  background: #fff2ee;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.radarWrap {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.78;
+}
+
+.radar {
+  width: 390px;
+  height: 390px;
+  border-radius: 50%;
+  border: 2px dashed rgba(22, 138, 143, 0.18);
+  position: relative;
+}
+
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 107, 107, 0.14);
+}
+
+.radar::before { inset: 58px; }
+.radar::after { inset: 126px; border-color: rgba(108, 99, 255, 0.14); }
+
+.radarPing,
+.radarPing2 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(22, 138, 143, 0.26);
+  transform: translate(-50%, -50%);
+  animation: radarPing 3s ease-out infinite;
+}
+
+.radarPing2 {
+  animation-delay: 1.5s;
+  border-color: rgba(255, 107, 107, 0.22);
+}
+
+@keyframes radarPing {
+  0% { width: 0; height: 0; opacity: 1; }
+  100% { width: 390px; height: 390px; opacity: 0; }
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 410px;
+  text-align: center;
+  background: var(--panel);
+  border: 2px solid rgba(34, 49, 58, 0.10);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
+  box-shadow: 0 9px 0 rgba(34, 49, 58, 0.07), var(--shadow-lg);
+}
+
+.searchSection,
+.matchedSection {
+  animation: fadeIn 0.35s ease;
+}
+
+.searchIcon,
+.matchBurst {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.15rem;
+}
+
+.searchEmoji,
+.matchEmoji {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+  position: relative;
+  z-index: 1;
+  border: 3px solid #fffdf7;
+  box-shadow: 0 8px 0 rgba(255, 209, 102, 0.45), var(--shadow);
+}
+
+.searchEmoji {
+  animation: searchBob 2s ease-in-out infinite;
+}
+
+@keyframes searchBob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-7px) rotate(2deg); }
+}
+
+.searchRing,
+.searchRing2 {
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  border: 3px dashed rgba(22, 138, 143, 0.28);
+  animation: ringSpin 3s linear infinite;
+}
+
+.searchRing2 {
+  width: 110px;
+  height: 110px;
+  border-color: rgba(255, 107, 107, 0.24);
+  animation-direction: reverse;
+}
+
+@keyframes ringSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.searchTitle,
+.matchTitle {
+  font-size: 1.45rem;
+  font-weight: 950;
+  color: var(--text);
+  margin-bottom: 0.55rem;
+}
+
+.badge {
+  display: inline-block;
+  background: #fff0b8;
+  border: 1px solid rgba(191, 123, 0, 0.22);
+  color: #7d4f00;
+  padding: 0.35rem 1.2rem;
+  border-radius: var(--radius);
+  font-weight: 850;
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.timer {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.2rem;
+  margin-bottom: 0.45rem;
+}
+
+.timerNum {
+  font-size: 2.55rem;
+  font-weight: 950;
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.timerUnit {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.hint,
+.matchSub {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.15rem;
+}
+
+.soloBtn,
+.cancelBtn {
+  border-radius: var(--radius-sm);
+  font-weight: 900;
+}
+
+.soloBtn {
+  padding: 0.9rem;
+  font-size: 1rem;
+  color: #2b2100;
+  background: linear-gradient(135deg, #ffd166, #ff8a7a 55%, #35c99b);
+  border: 2px solid rgba(34, 49, 58, 0.10);
+  box-shadow: 0 7px 0 rgba(34, 49, 58, 0.10);
+}
+
+.soloBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 0 rgba(34, 49, 58, 0.10), var(--shadow);
+}
+
+.cancelBtn {
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--primary-dark);
+  background: #e7faf7;
+  border: 2px solid rgba(22, 138, 143, 0.14);
+}
+
+.cancelBtn:hover {
+  background: #d8f5ef;
+}
+
+.matchBurst {
+  width: 106px;
+  height: 106px;
+}
+
+.matchEmoji {
+  animation: popIn 0.4s ease;
+}
+
+.burstLine {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 42px;
+  background: linear-gradient(to top, transparent, #ff6b6b);
+  transform-origin: bottom center;
+  animation: burstOut 0.65s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes burstOut {
+  0% { height: 0; opacity: 1; }
+  70% { height: 46px; opacity: 0.72; }
+  100% { height: 50px; opacity: 0; }
+}
+
+.vsBar {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.vsPlayer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  animation: slideUp 0.35s ease backwards;
+}
+
+.vsAvatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.18rem;
+  font-weight: 950;
+  color: #fff;
+  box-shadow: 0 7px 0 rgba(34, 49, 58, 0.08), var(--shadow);
+}
+
+.vsName {
+  font-size: 0.82rem;
+  font-weight: 850;
+  color: var(--text);
+  max-width: 74px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.countdownBar {
+  height: 7px;
+  background: rgba(34, 49, 58, 0.10);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 250px;
+  margin: 0 auto;
+}
+
+.countdownFill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b6b, #ffd166, #168a8f);
+  border-radius: 8px;
+  animation: countFill 3s linear;
+}
+
+@keyframes countFill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .content { padding: 1.6rem 1.1rem; }
+  .vsAvatar { width: 42px; height: 42px; font-size: 1rem; }
+}
+
+@media (max-width: 349px), (max-height: 349px) {
+  .container { padding: 8px; }
+  .radarWrap { opacity: 0.3; }
+  .radar { width: 200px; height: 200px; }
+  .radar::before { inset: 30px; }
+  .radar::after { inset: 70px; }
+  @keyframes radarPing {
+    0% { width: 0; height: 0; opacity: 1; }
+    100% { width: 200px; height: 200px; opacity: 0; }
+  }
+  .content { max-width: 100%; padding: 14px 10px; }
+  .searchIcon { margin-bottom: 10px; }
+  .searchEmoji { width: 52px; height: 52px; border-radius: 8px; }
+  .searchRing { width: 60px; height: 60px; }
+  .searchRing2 { width: 80px; height: 80px; }
+  .searchTitle { font-size: 1.2rem; margin-bottom: 8px; }
+  .badge { font-size: 0.85rem; padding: 6px 14px; margin-bottom: 12px; border-radius: 8px; }
+  .timerNum { font-size: 3rem; }
+  .timerUnit { font-size: 1rem; }
+  .timer { margin-bottom: 4px; }
+  .hint { font-size: 0.75rem; margin-bottom: 8px; }
+  .matchSub { display: block; font-size: 0.72rem; margin-bottom: 8px; }
+  .actions { gap: 6px; margin-top: 10px; }
+  .soloBtn { min-height: 48px; padding: 12px; font-size: 1rem; border-radius: 8px; }
+  .cancelBtn { min-height: 44px; padding: 10px; font-size: 0.9rem; border-radius: 8px; }
+  .matchBurst { width: 72px; height: 72px; margin-bottom: 8px; }
+  .matchEmoji { width: 48px; height: 48px; border-radius: 8px; }
+  .burstLine { height: 30px; }
+  .matchTitle { font-size: 1.3rem; margin-bottom: 4px; }
+  .vsBar { gap: 10px; margin-bottom: 12px; }
+  .vsAvatar { width: 40px; height: 40px; font-size: 1rem; }
+  .vsName { font-size: 0.8rem; max-width: 60px; }
+  .countdownBar { max-width: 160px; }
+}
+
+@media (max-width: 220px), (max-height: 220px) {
+  .container { padding: 4px; }
+  .connBar { padding: 2px; font-size: 0.58rem; }
+  .radarWrap { opacity: 0.18; }
+  .content { padding: 8px; }
+  .searchIcon { margin-bottom: 4px; }
+  .searchEmoji { width: 34px; height: 34px; border-radius: 8px; }
+  .searchRing { width: 40px; height: 40px; }
+  .searchRing2 { width: 52px; height: 52px; }
+  .searchTitle { font-size: 0.88rem; margin-bottom: 4px; }
+  .badge { font-size: 0.62rem; padding: 3px 6px; margin-bottom: 5px; }
+  .timerNum { font-size: 1.65rem; }
+  .timerUnit { font-size: 0.65rem; }
+  .hint { font-size: 0.56rem; margin-bottom: 4px; }
+  .actions { gap: 4px; margin-top: 5px; }
+  .soloBtn { min-height: 30px; padding: 5px; font-size: 0.72rem; border-radius: 8px; }
+  .cancelBtn { min-height: 28px; padding: 4px; font-size: 0.66rem; border-radius: 8px; }
+  .matchBurst { width: 44px; height: 44px; margin-bottom: 4px; }
+  .matchEmoji { width: 32px; height: 32px; border-radius: 8px; }
+  .burstLine { height: 20px; }
+  .matchTitle { font-size: 0.9rem; margin-bottom: 2px; }
+  .matchSub { font-size: 0.58rem; margin-bottom: 5px; }
+  .vsBar { gap: 5px; margin-bottom: 6px; }
+  .vsAvatar { width: 28px; height: 28px; font-size: 0.68rem; }
+  .vsName { max-width: 42px; font-size: 0.58rem; }
+  .countdownBar { max-width: 110px; height: 3px; }
+}

@@ -1,0 +1,12 @@
+services:
+  quiz-app:
+    build:
+      context: ..
+      dockerfile: quiz-app/Dockerfile
+    container_name: quiz-app
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001

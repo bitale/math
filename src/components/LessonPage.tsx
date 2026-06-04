@@ -42,8 +42,9 @@ export const LessonPage: FC<Props> = ({
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [lesson.id]);
 
-  const nextLesson = lessons.find((l) => l.id === lesson.id + 1);
-  const prevLesson = lessons.find((l) => l.id === lesson.id - 1);
+  const currentIndex = lessons.findIndex((l) => l.id === lesson.id);
+  const prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : undefined;
+  const nextLesson = currentIndex < lessons.length - 1 ? lessons[currentIndex + 1] : undefined;
   const completed = completedIds.includes(lesson.id);
 
   return (
@@ -58,11 +59,11 @@ export const LessonPage: FC<Props> = ({
 
       <header className="mt-3">
         <div className="text-xs font-bold text-navy-500">
-          #{String(lesson.id).padStart(2, "0")} · {lesson.category} ·{" "}
+          #{String(currentIndex + 1).padStart(2, "0")} · {lesson.category} ·{" "}
           {lesson.level}
         </div>
         <h1 className="mt-1 text-2xl md:text-3xl font-bold text-navy-900">
-          {lesson.title}
+          <MathText>{lesson.title}</MathText>
         </h1>
         <div className="mt-2 text-sm text-navy-700 leading-7">
           <MathText>{lesson.question}</MathText>
@@ -116,7 +117,7 @@ export const LessonPage: FC<Props> = ({
               onNavigate({ name: "lesson", lessonId: prevLesson.id })
             }
           >
-            ← {prevLesson.title}
+            ← <MathText>{prevLesson.title}</MathText>
           </button>
         ) : (
           <span />
@@ -129,7 +130,7 @@ export const LessonPage: FC<Props> = ({
               onNavigate({ name: "lesson", lessonId: nextLesson.id })
             }
           >
-            {nextLesson.title} →
+            <MathText>{nextLesson.title}</MathText> →
           </button>
         ) : (
           <span />

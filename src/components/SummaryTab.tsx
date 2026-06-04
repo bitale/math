@@ -83,7 +83,7 @@ export const SummaryTab: FC<Props> = ({
               onNavigate({ name: "lesson", lessonId: nextLesson.id })
             }
           >
-            다음 단원: {nextLesson.title} →
+            다음 단원: <MathText>{nextLesson.title}</MathText> →
           </button>
         )}
         <button

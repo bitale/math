@@ -1,0 +1,73 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playerItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+
+.playerItem:hover {
+  background: var(--border);
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.online {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(0, 184, 148, 0.4);
+}
+
+.offline {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(225, 112, 85, 0.4);
+}
+
+.crown {
+  min-width: 24px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(247, 213, 138, 0.16);
+  border: 1px solid rgba(247, 213, 138, 0.28);
+  color: #f7d58a;
+  font-size: 0.68rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.nickname {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.hostLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--warning-dark);
+  background: rgba(253, 203, 110, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+}
+
+.disconnectedLabel {
+  font-size: 0.75rem;
+  color: var(--danger);
+  font-weight: 500;
+}

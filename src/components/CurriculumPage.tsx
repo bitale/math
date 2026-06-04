@@ -56,16 +56,20 @@ export const CurriculumPage: FC<Props> = ({
               </span>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map((lesson) => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  completed={completedIds.includes(lesson.id)}
-                  onClick={() =>
-                    onNavigate({ name: "lesson", lessonId: lesson.id })
-                  }
-                />
-              ))}
+              {items.map((lesson) => {
+                const displayNum = lessons.indexOf(lesson) + 1;
+                return (
+                  <LessonCard
+                    key={lesson.id}
+                    lesson={lesson}
+                    displayNum={displayNum}
+                    completed={completedIds.includes(lesson.id)}
+                    onClick={() =>
+                      onNavigate({ name: "lesson", lessonId: lesson.id })
+                    }
+                  />
+                );
+              })}
             </div>
           </section>
         ))}

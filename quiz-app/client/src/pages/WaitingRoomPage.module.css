@@ -1,0 +1,132 @@
+.container {
+  min-height: 100vh;
+  padding: 0 1rem 2rem;
+  max-width: 700px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.roomName {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.leaveBtn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--danger);
+  background: rgba(225, 112, 85, 0.08);
+  border: 1px solid rgba(225, 112, 85, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.leaveBtn:hover {
+  background: rgba(225, 112, 85, 0.15);
+}
+
+.settings {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.settingItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: var(--bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+.settingValue {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.playerCount {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.startBtn {
+  width: 100%;
+  max-width: 400px;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: white;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+}
+
+.startBtn:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(108, 92, 231, 0.3);
+}
+
+.waitingMessage {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.connectionBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: rgba(225, 112, 85, 0.1);
+  color: var(--danger);
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 480px) {
+  .settings {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
