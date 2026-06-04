@@ -82,6 +82,21 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
   const [showChoices, setShowChoices] = useState(false);
   const [showTimePressure, setShowTimePressure] = useState(false);
   const [showCorrectToast, setShowCorrectToast] = useState(false);
+  const bgParticles = useMemo(() => Array.from({ length: 42 }, () => ({
+    left: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 8}s`,
+    animationDuration: `${6 + Math.random() * 6}s`,
+  })), []);
+  const speedLines = useMemo(() => Array.from({ length: 18 }, () => ({
+    top: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 1.8}s`,
+    animationDuration: `${0.85 + Math.random() * 0.9}s`,
+  })), []);
+  const sparks = useMemo(() => Array.from({ length: 28 }, () => ({
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 2.4}s`,
+  })), []);
 
   const players = useMemo(() => matchInfo?.users ?? [], [matchInfo]);
   const me = useMemo(() => players.find((p) => p.userId === userId), [players, userId]);
@@ -244,35 +259,23 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
     <div className={`${styles.container} ${isResultPhase ? styles.resultPhase : ""} ${battleStateClass} ${showTimePressure ? styles.timePressureHit : ""}`}>
       {/* 배경 파티클 */}
       <div className={styles.bgParticles}>
-        {Array.from({ length: 42 }, (_, i) => (
-          <div key={i} className={styles.particle} style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 8}s`,
-            animationDuration: `${6 + Math.random() * 6}s`,
-          }} />
+        {bgParticles.map((style, i) => (
+          <div key={i} className={styles.particle} style={style} />
         ))}
       </div>
       <div className={styles.speedLines}>
-        {Array.from({ length: 18 }, (_, i) => (
+        {speedLines.map((style, i) => (
           <span
             key={i}
-            style={{
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 1.8}s`,
-              animationDuration: `${0.85 + Math.random() * 0.9}s`,
-            }}
+            style={style}
           />
         ))}
       </div>
       <div className={styles.sparkField}>
-        {Array.from({ length: 28 }, (_, i) => (
+        {sparks.map((style, i) => (
           <i
             key={i}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2.4}s`,
-            }}
+            style={style}
           />
         ))}
       </div>
