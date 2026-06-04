@@ -2488,11 +2488,18 @@
   }
 }
 
-/* 보기 버튼 안정화: 타이머/팀전 HUD 갱신 때 opacity 애니메이션이 재적용되어 깜빡이지 않게 고정 */
+/* 보기 영역 안정화:
+   - 제출/상대응답으로 '응답 대기' 바·토스트 등 형제 요소가 늘어도 보기 영역이
+     줄어들거나(축소) 잘리지 않도록(클리핑) 고정한다.
+   - 기본 .choices의 flex:1 1 auto + min-height:0 + overflow:auto 조합은 남은 공간이
+     부족하면 보기 영역을 축소+내부 스크롤시켜 보기 한 개가 사라지는 원인이었다.
+   - contain:paint 도 2x2 그리드 하단 보기를 잘라내므로 제거한다.
+   - 화면이 짧으면 보기 대신 바깥 .container 가 스크롤된다(모든 보기는 항상 렌더). */
 .choices {
-  flex: 0 0 auto;
-  overflow: visible;
-  contain: layout paint;
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+  overflow: visible !important;
+  contain: none !important;
 }
 
 .choices > *,
@@ -2500,8 +2507,4 @@
   opacity: 1 !important;
   transform: none !important;
   animation: none !important;
-}
-
-.choiceBtn {
-  will-change: auto;
 }
