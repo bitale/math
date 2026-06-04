@@ -26,7 +26,7 @@ interface BattleStat {
 
 const DEFAULT_STAT: BattleStat = { hp: 100, maxHp: 100, combo: 0, downed: false };
 
-const TEAM_LABELS = ["청팀", "홍팀"];
+const TEAM_LABELS = ["볼트", "노바"];
 const teamLabel = (t: number): string => TEAM_LABELS[t] ?? `${t + 1}팀`;
 
 function hpPct(s: BattleStat): number {

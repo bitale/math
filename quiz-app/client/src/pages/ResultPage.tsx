@@ -30,7 +30,7 @@ function Latex({ text }: { text: string }) {
 
 const CHOICE_COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12"];
 const PODIUM_COLORS = ["#fdcb6e", "#b2bec3", "#e17055"];
-const TEAM_LABELS = ["청팀", "홍팀"];
+const TEAM_LABELS = ["볼트", "노바"];
 const teamLabel = (t: number): string => TEAM_LABELS[t] ?? `${t + 1}팀`;
 const AVATAR_COLORS = [
   "#6c5ce7", "#00cec9", "#e17055", "#00b894",
