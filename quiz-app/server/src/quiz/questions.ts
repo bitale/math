@@ -1,4 +1,5 @@
 import { QuizQuestion } from "./quizTypes";
+import { generateMathQuestions, hasGenerator } from "./mathGenerators";
 import { preschoolLessons } from "../../../../src/data/preschool/index";
 import { elementaryLessons } from "../../../../src/data/elementary/index";
 import { diffEqLessons } from "../../../../src/data/diffEq/index";
@@ -104,7 +105,13 @@ for (const q of allQuestions) {
 /* ── 공개 API ── */
 
 export function getRandomQuestions(count: number, gradeKey: string): QuizQuestion[] {
-  const pool = questionsByGrade.get(gradeKey) || [];
+  const staticPool = questionsByGrade.get(gradeKey) || [];
+  // 수학 학년은 절차적 생성기로 매 게임 새 문제를 섞어 풀을 무제한으로 키운다.
+  // (정적 문제가 학년당 15~38개뿐이라 금방 반복되는 문제를 해소)
+  const generated = hasGenerator(gradeKey)
+    ? generateMathQuestions(gradeKey, Math.max(count * 3, 24))
+    : [];
+  const pool = [...staticPool, ...generated];
   if (pool.length === 0) return [];
 
   const hard = pool.filter((q) => q.difficulty >= 3);
