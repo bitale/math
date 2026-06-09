@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import socket from "./socket";
 import type {
   MatchInfo,
@@ -17,6 +17,8 @@ import MatchmakingPage from "./pages/MatchmakingPage";
 import QuizPage from "./pages/QuizPage";
 import ResultPage from "./pages/ResultPage";
 import AdminPage from "./pages/AdminPage";
+import AppShell from "./components/AppShell";
+import { sfx } from "./lib/sfx";
 
 type Page = "nickname" | "select" | "matchmaking" | "quiz" | "result";
 
@@ -223,6 +225,9 @@ function App() {
     };
   }, [currentPage, startTimer, clearTimer, userId]);
 
+  // 첫 사용자 제스처에서 오디오 활성화
+  useEffect(() => { sfx.arm(); }, []);
+
   // ─── 핸들러 ───
   const handleNicknameSet = useCallback((name: string) => {
     socket.emit("setNickname", { nickname: name });
@@ -281,60 +286,68 @@ function App() {
   }, []);
 
   // ─── 렌더 ───
+  let pageKey: string = currentPage;
+  let pageEl: ReactNode = null;
+
   if (!nickname || currentPage === "nickname") {
-    return <NicknamePage onSubmit={handleNicknameSet} connected={connected} />;
+    pageKey = "nickname";
+    pageEl = <NicknamePage onSubmit={handleNicknameSet} connected={connected} />;
+  } else {
+    switch (currentPage) {
+      case "select":
+        pageEl = (
+          <SubjectSelectPage
+            nickname={nickname}
+            grades={grades}
+            connected={connected}
+            onSelectGrade={handleSelectGrade}
+            onChangeNickname={handleChangeNickname}
+          />
+        );
+        break;
+      case "matchmaking":
+        pageEl = (
+          <MatchmakingPage
+            gradeKey={selectedGrade}
+            grades={grades}
+            connected={connected}
+            matchInfo={matchInfo}
+            onPlaySolo={handlePlaySolo}
+            onCancel={handleCancelMatch}
+          />
+        );
+        break;
+      case "quiz":
+        pageEl = (
+          <QuizPage
+            question={currentQuestion}
+            questionResult={questionResult}
+            timeLeft={timeLeft}
+            userId={userId}
+            connected={connected}
+            answeredUsers={answeredUsers}
+            matchInfo={matchInfo}
+            timePressure={timePressure}
+            answerCorrect={answerCorrect}
+            battleScores={battleScores}
+          />
+        );
+        break;
+      case "result":
+        pageEl = gameResult ? (
+          <ResultPage
+            result={gameResult}
+            userId={userId}
+            reviewHistory={reviewHistory}
+            onPlayAgain={handlePlayAgain}
+            onGoToSelect={handleGoToSelect}
+          />
+        ) : null;
+        break;
+    }
   }
 
-  switch (currentPage) {
-    case "select":
-      return (
-        <SubjectSelectPage
-          nickname={nickname}
-          grades={grades}
-          connected={connected}
-          onSelectGrade={handleSelectGrade}
-          onChangeNickname={handleChangeNickname}
-        />
-      );
-    case "matchmaking":
-      return (
-        <MatchmakingPage
-          gradeKey={selectedGrade}
-          grades={grades}
-          connected={connected}
-          matchInfo={matchInfo}
-          onPlaySolo={handlePlaySolo}
-          onCancel={handleCancelMatch}
-        />
-      );
-    case "quiz":
-      return (
-        <QuizPage
-          question={currentQuestion}
-          questionResult={questionResult}
-          timeLeft={timeLeft}
-          userId={userId}
-          connected={connected}
-          answeredUsers={answeredUsers}
-          matchInfo={matchInfo}
-          timePressure={timePressure}
-          answerCorrect={answerCorrect}
-          battleScores={battleScores}
-        />
-      );
-    case "result":
-      return gameResult ? (
-        <ResultPage
-          result={gameResult}
-          userId={userId}
-          reviewHistory={reviewHistory}
-          onPlayAgain={handlePlayAgain}
-          onGoToSelect={handleGoToSelect}
-        />
-      ) : null;
-    default:
-      return null;
-  }
+  return <AppShell pageKey={pageKey}>{pageEl}</AppShell>;
 }
 
 export default App;

@@ -20,6 +20,10 @@ interface BattleSettings {
   firstCorrectBonus: number;
   comboBonusStep: number;
   comboBonusMaxSteps: number;
+  desperationHpRatio: number;
+  desperationDamageBonus: number;
+  comebackHealThreshold: number;
+  comebackHealAmount: number;
 }
 
 interface FlowSettings {
@@ -68,6 +72,10 @@ const BATTLE_FIELD_LABELS: FieldMeta<keyof BattleSettings> = {
   firstCorrectBonus: { label: "선취 추가 점수", hint: "가장 먼저 정답 보너스", step: 1, min: 0, max: 20 },
   comboBonusStep: { label: "콤보 점수 배수/단계", hint: "0.25 = +25%", step: 0.05, min: 0, max: 2 },
   comboBonusMaxSteps: { label: "콤보 점수 최대 단계", hint: "배수 증폭 상한", step: 1, min: 0, max: 20 },
+  desperationHpRatio: { label: "위기 반격 기준", hint: "이 HP 비율 이하서 정답 시 추가타", step: 0.05, min: 0, max: 1 },
+  desperationDamageBonus: { label: "위기 반격 피해", hint: "저체력 정답 추가 공격력", step: 1, min: 0, max: 100 },
+  comebackHealThreshold: { label: "컴백 힐 기준", hint: "선공 팀 HP 비율 이하서 힐", step: 0.05, min: 0, max: 1 },
+  comebackHealAmount: { label: "컴백 힐 회복량", hint: "선공 시 최약 팀원 회복", step: 1, min: 0, max: 100 },
 };
 
 const FLOW_FIELD_LABELS: FieldMeta<keyof FlowSettings> = {
@@ -111,6 +119,10 @@ const BATTLE_HP_FIELD_ORDER: Array<keyof BattleSettings> = [
   "firstCorrectBonus",
   "comboBonusStep",
   "comboBonusMaxSteps",
+  "desperationHpRatio",
+  "desperationDamageBonus",
+  "comebackHealThreshold",
+  "comebackHealAmount",
 ];
 
 const FLOW_FIELD_ORDER: Array<keyof FlowSettings> = [

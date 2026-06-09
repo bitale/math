@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import katex from "katex";
 import type { GameResult, QuestionReview } from "../types";
+import { sfx } from "../lib/sfx";
 import styles from "./ResultPage.module.css";
 
 interface ResultPageProps {
@@ -67,7 +68,13 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
     setTimeout(() => setShowTable(true), 800);
     setTimeout(() => setShowReview(true), 1200);
     const t = setTimeout(() => setConfetti(false), 5000);
-    return () => clearTimeout(t);
+    // 승패 효과음 — 팀전이면 팀 결과, 아니면 1위 여부
+    const won = tb?.isTeamBattle
+      ? tb.winnerTeam === myTeamId
+      : (rankings.find((r) => r.userId === userId)?.rank === 1);
+    const draw = tb?.isTeamBattle && tb.winnerTeam === null;
+    const st = setTimeout(() => sfx.play(won && !draw ? "win" : draw ? "select" : "lose"), 500);
+    return () => { clearTimeout(t); clearTimeout(st); };
   }, []);
 
   const top3 = rankings.slice(0, 3);
@@ -392,8 +399,8 @@ function ResultPage({ result, userId, reviewHistory, onPlayAgain, onGoToSelect }
 
       {/* 액션 */}
       <div className={styles.actions}>
-        <button className={styles.restartBtn} onClick={onPlayAgain}>다시 하기</button>
-        <button className={styles.selectBtn} onClick={onGoToSelect}>과목 선택으로</button>
+        <button className={styles.restartBtn} onClick={() => { sfx.play("select"); onPlayAgain(); }}>다시 하기</button>
+        <button className={styles.selectBtn} onClick={() => { sfx.play("click"); onGoToSelect(); }}>과목 선택으로</button>
       </div>
     </div>
   );

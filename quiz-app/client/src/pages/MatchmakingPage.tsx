@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { GradeInfo, MatchInfo } from "../types";
+import { sfx } from "../lib/sfx";
 import styles from "./MatchmakingPage.module.css";
 
 interface Props {
@@ -26,7 +27,10 @@ function MatchmakingPage({ gradeKey, grades, connected, matchInfo, onPlaySolo, o
   }, [gradeKey]);
 
   useEffect(() => {
-    if (matched && intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (matched) {
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      sfx.play("correct");
+    }
   }, [matched]);
 
   return (
@@ -52,7 +56,7 @@ function MatchmakingPage({ gradeKey, grades, connected, matchInfo, onPlaySolo, o
               ))}
               <img className={styles.matchEmoji} src="/assets/icon-battle.jpg" alt="" />
             </div>
-            <h2 className={styles.matchTitle}>매칭 완료!</h2>
+            <h2 className={`${styles.matchTitle} gameTitle`}>매칭 완료!</h2>
             <p className={styles.matchSub}>배틀이 곧 시작됩니다</p>
             <div className={styles.vsBar}>
               {matchInfo!.users.map((u, i) => (
@@ -85,10 +89,10 @@ function MatchmakingPage({ gradeKey, grades, connected, matchInfo, onPlaySolo, o
               <p className={styles.hint}>30초 후 봇과 함께 시작돼요!</p>
             )}
             <div className={styles.actions}>
-              <button className={styles.soloBtn} onClick={onPlaySolo} disabled={!connected}>
+              <button className={styles.soloBtn} onClick={() => { sfx.play("select"); onPlaySolo(); }} disabled={!connected}>
                 혼자 풀기
               </button>
-              <button className={styles.cancelBtn} onClick={onCancel}>
+              <button className={styles.cancelBtn} onClick={() => { sfx.play("click"); onCancel(); }}>
                 취소
               </button>
             </div>

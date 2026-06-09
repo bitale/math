@@ -38,6 +38,11 @@
   --radius-sm: 8px;
   --transition: 0.18s ease;
 
+  /* 게임 UI 디스플레이/테크 폰트 */
+  --font-display: "Black Han Sans", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-tech: "Orbitron", "Rajdhani", "Pretendard", "Noto Sans KR", sans-serif;
+  --font-ui: "Rajdhani", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+
   --page-max-width: 900px;
   --page-padding: clamp(0.75rem, 3vw, 1.25rem);
 }
@@ -196,4 +201,352 @@ p, h1, h2, h3, h4, h5, h6, span, div, button {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════
+   e-SPORTS / 다이애고널 게임 UI 디자인 시스템 (전역 공용)
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 타이포 ── */
+.gameTitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.98;
+  color: #fff;
+  text-shadow: 0 0 14px rgba(0, 229, 255, 0.55), 0 0 30px rgba(255, 43, 214, 0.35), 0 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.techLabel {
+  font-family: var(--font-tech);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.techText { font-family: var(--font-tech); letter-spacing: 0.04em; }
+
+/* 랭크/상태 알약 */
+.rankPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-tech);
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: #1a1000;
+  background: linear-gradient(135deg, #ffd400, #ff7a00);
+  padding: 3px 12px 3px 10px;
+  clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  box-shadow: 0 0 16px rgba(255, 212, 0, 0.35);
+}
+
+/* ── 홀로그램 카드 (다이애고널 클립) ── */
+.holoCard {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(9, 19, 38, 0.94), rgba(15, 11, 33, 0.9));
+  border: 1px solid rgba(0, 229, 255, 0.34);
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+  box-shadow: var(--shadow-glow), var(--shadow);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.holoCard::before {
+  content: "";
+  position: absolute;
+  inset: -60% -30%;
+  z-index: -1;
+  background: linear-gradient(115deg,
+    transparent 42%, rgba(0, 229, 255, 0.12) 47%,
+    rgba(255, 43, 214, 0.12) 53%, transparent 58%);
+  animation: holoShift 6.5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes holoShift {
+  0% { transform: translateX(-26%) translateY(-6%); }
+  100% { transform: translateX(26%) translateY(6%); }
+}
+
+/* ── 3D / 다이애고널 게임 버튼 ── */
+.gameBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  font-size: 0.96rem;
+  color: #d8f6ff;
+  padding: 0.85rem 1.4rem;
+  background: linear-gradient(135deg, rgba(10, 22, 44, 0.96), rgba(7, 15, 32, 0.92));
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  box-shadow:
+    inset 0 0 18px rgba(0, 229, 255, 0.12),
+    0 6px 0 rgba(0, 0, 0, 0.42),
+    0 0 18px rgba(0, 229, 255, 0.18);
+  overflow: hidden;
+  transition: transform 0.13s ease, box-shadow 0.13s ease, color 0.13s ease, border-color 0.13s ease;
+}
+
+.gameBtn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-22deg);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.gameBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow:
+    inset 0 0 22px rgba(0, 229, 255, 0.22),
+    0 8px 0 rgba(0, 0, 0, 0.42),
+    0 0 30px rgba(0, 229, 255, 0.42);
+}
+
+.gameBtn:hover:not(:disabled)::after { left: 130%; }
+
+.gameBtn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: inset 0 0 22px rgba(0, 229, 255, 0.3), 0 2px 0 rgba(0, 0, 0, 0.42), 0 0 16px rgba(0, 229, 255, 0.3);
+}
+
+.gameBtn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.4); }
+
+/* 주 버튼 (네온 핑크/시안 그라데) */
+.gameBtnPrimary {
+  color: #02030a;
+  font-weight: 900;
+  background: linear-gradient(135deg, #00e5ff 0%, #2bd6ff 40%, #ff2bd6 100%);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 6px 0 rgba(0, 0, 0, 0.42),
+    0 0 26px rgba(255, 43, 214, 0.45),
+    0 0 26px rgba(0, 229, 255, 0.35);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.gameBtnPrimary:hover:not(:disabled) {
+  color: #02030a;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.42), 0 0 40px rgba(255, 43, 214, 0.6), 0 0 36px rgba(0, 229, 255, 0.5);
+}
+
+.gameBtnDanger {
+  border-color: rgba(255, 49, 95, 0.6);
+  color: #ffd9e1;
+  box-shadow: inset 0 0 18px rgba(255, 49, 95, 0.16), 0 6px 0 rgba(0, 0, 0, 0.42), 0 0 18px rgba(255, 49, 95, 0.28);
+}
+
+.gameBtnDanger:hover:not(:disabled) {
+  color: #fff; border-color: var(--danger);
+  box-shadow: inset 0 0 22px rgba(255, 49, 95, 0.26), 0 8px 0 rgba(0, 0, 0, 0.42), 0 0 30px rgba(255, 49, 95, 0.5);
+}
+
+/* ── 다이애고널 구분선 / 입장 화살표 ── */
+.diagDivider {
+  height: 2px;
+  border: none;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.7), rgba(255, 43, 214, 0.5), transparent);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+/* ════════════ 앱 셸: HUD 프레임 + 스캔라인 + 화면 전환 ════════════ */
+
+.appShell { position: relative; min-height: 100dvh; }
+
+/* 화면 바깥 HUD 베젤 (코너 브래킷 + 가장자리 글로우) */
+.hudFrame {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 229, 255, 0.16),
+    inset 0 0 90px rgba(2, 4, 12, 0.6);
+}
+
+.hudFrame::before,
+.hudFrame::after {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+}
+
+/* 좌상 + 우하 코너 브래킷 */
+.hudFrame::before {
+  top: 9px; left: 9px;
+  border-top: 2px solid rgba(0, 229, 255, 0.8);
+  border-left: 2px solid rgba(0, 229, 255, 0.8);
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.7));
+}
+.hudFrame::after {
+  bottom: 9px; right: 9px;
+  border-bottom: 2px solid rgba(255, 43, 214, 0.8);
+  border-right: 2px solid rgba(255, 43, 214, 0.8);
+  filter: drop-shadow(0 0 6px rgba(255, 43, 214, 0.7));
+}
+
+/* 우상 + 좌하 코너 브래킷 (별도 요소) */
+.hudCorner {
+  position: fixed;
+  z-index: 9000;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+}
+.hudCornerTR {
+  top: 9px; right: 9px;
+  border-top: 2px solid rgba(255, 43, 214, 0.8);
+  border-right: 2px solid rgba(255, 43, 214, 0.8);
+  filter: drop-shadow(0 0 6px rgba(255, 43, 214, 0.7));
+}
+.hudCornerBL {
+  bottom: 9px; left: 9px;
+  border-bottom: 2px solid rgba(0, 229, 255, 0.8);
+  border-left: 2px solid rgba(0, 229, 255, 0.8);
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.7));
+}
+
+/* 스캔라인 + 비네트 (전역 질감) */
+.shellScan {
+  position: fixed;
+  inset: 0;
+  z-index: 8999;
+  pointer-events: none;
+  background:
+    radial-gradient(135% 120% at 50% 42%, transparent 60%, rgba(2, 4, 12, 0.26) 88%, rgba(1, 2, 8, 0.46) 100%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.038) 0 1px, transparent 1px 3px);
+  opacity: 0.6;
+  mix-blend-mode: multiply;
+}
+
+.shellScan::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 32%;
+  background: linear-gradient(180deg, transparent, rgba(0, 229, 255, 0.045), transparent);
+  mix-blend-mode: screen;
+  animation: shellSweep 8s linear infinite;
+}
+
+@keyframes shellSweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  16% { opacity: 1; }
+  84% { opacity: 1; }
+  100% { transform: translateY(360%); opacity: 0; }
+}
+
+/* 화면 전환: 페이지 등장 + 다이애고널 스와이프 바 */
+.pageEnter { animation: pageEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes pageEnter {
+  0% { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.99); }
+  100% { opacity: 1; transform: none; }
+}
+
+.swipeBar {
+  position: fixed;
+  top: -20%;
+  left: 0;
+  width: 75%;
+  height: 140%;
+  z-index: 9500;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 0%, rgba(0, 229, 255, 0.0) 30%,
+    rgba(0, 229, 255, 0.35) 46%, rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 43, 214, 0.35) 54%, transparent 70%);
+  filter: blur(2px);
+  transform: translateX(-140%) skewX(-16deg);
+  animation: swipeWipe 0.62s ease both;
+}
+
+@keyframes swipeWipe {
+  0% { transform: translateX(-140%) skewX(-16deg); opacity: 0; }
+  22% { opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translateX(170%) skewX(-16deg); opacity: 0; }
+}
+
+/* 음소거 토글 버튼 */
+.sfxToggle {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 9100;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+  color: var(--primary-dark);
+  background: linear-gradient(135deg, rgba(9, 19, 38, 0.9), rgba(15, 11, 33, 0.86));
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2);
+}
+
+.sfxToggle:hover { border-color: var(--primary); box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); }
+.sfxToggle:active { transform: translateY(1px); }
+
+@media (max-width: 480px) {
+  .hudFrame::before, .hudFrame::after, .hudCorner { width: 24px; height: 24px; }
+  .sfxToggle { top: 8px; right: 8px; width: 30px; height: 30px; }
+}
+
+/* 초소형 화면(스마트워치급 ~280px): HUD 베젤이 콘텐츠 가장자리를 잠식/암전시키지
+   않도록 비네트·코너 브래킷·음소거 토글을 대폭 축소 */
+@media (max-width: 349px), (max-height: 349px) {
+  .hudFrame {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 229, 255, 0.14),
+      inset 0 0 34px rgba(2, 4, 12, 0.5);
+  }
+  .hudFrame::before, .hudFrame::after, .hudCorner { width: 16px; height: 16px; }
+  .hudFrame::before { top: 5px; left: 5px; }
+  .hudFrame::after { bottom: 5px; right: 5px; }
+  .hudCornerBL { bottom: 5px; left: 5px; }
+  .sfxToggle {
+    top: 5px; right: 5px;
+    width: 24px; height: 24px;
+    font-size: 0.7rem;
+  }
+  .shellScan { opacity: 0.42; }
+}
+
+@media (max-width: 220px), (max-height: 220px) {
+  .hudFrame {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 229, 255, 0.12),
+      inset 0 0 18px rgba(2, 4, 12, 0.42);
+  }
+  .hudFrame::before, .hudFrame::after, .hudCorner { width: 11px; height: 11px; }
+  .sfxToggle { width: 20px; height: 20px; font-size: 0.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holoCard::before,
+  .shellScan::after,
+  .swipeBar { animation: none; }
+  .swipeBar { display: none; }
+  .gameBtn::after { display: none; }
 }

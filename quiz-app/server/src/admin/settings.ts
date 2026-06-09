@@ -18,6 +18,12 @@ export interface BattleSettings {
   firstCorrectBonus: number;   // 선취 추가 점수
   comboBonusStep: number;      // 콤보 1단계당 점수 배수 증가 (0.25 = +25%)
   comboBonusMaxSteps: number;  // 콤보 점수 배수 최대 단계
+  // ── 위기 반격(근성) ──
+  desperationHpRatio: number;     // 이 HP 비율 이하에서 정답 시 위기 반격(추가 공격력)
+  desperationDamageBonus: number; // 위기 반격 추가 공격력
+  // ── 컴백 힐 ──
+  comebackHealThreshold: number;  // 선공 팀의 총 HP 비율이 이 값 이하이면 힐 발동
+  comebackHealAmount: number;     // 컴백 힐 회복량
 }
 
 export interface FlowSettings {
@@ -64,6 +70,10 @@ const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   firstCorrectBonus: 2,
   comboBonusStep: 0.25,
   comboBonusMaxSteps: 4,
+  desperationHpRatio: 0.3,
+  desperationDamageBonus: 6,
+  comebackHealThreshold: 0.5,
+  comebackHealAmount: 12,
 };
 
 const DEFAULT_FLOW_SETTINGS: FlowSettings = {
@@ -134,6 +144,10 @@ export function updateBattleSettings(patch: Partial<BattleSettings>): BattleSett
     firstCorrectBonus: clampNumber(patch.firstCorrectBonus, 0, 20, battleSettings.firstCorrectBonus),
     comboBonusStep: clampNumber(patch.comboBonusStep, 0, 2, battleSettings.comboBonusStep),
     comboBonusMaxSteps: clampNumber(patch.comboBonusMaxSteps, 0, 20, battleSettings.comboBonusMaxSteps),
+    desperationHpRatio: clampNumber(patch.desperationHpRatio, 0, 1, battleSettings.desperationHpRatio),
+    desperationDamageBonus: clampNumber(patch.desperationDamageBonus, 0, 100, battleSettings.desperationDamageBonus),
+    comebackHealThreshold: clampNumber(patch.comebackHealThreshold, 0, 1, battleSettings.comebackHealThreshold),
+    comebackHealAmount: clampNumber(patch.comebackHealAmount, 0, 100, battleSettings.comebackHealAmount),
   };
 
   const ratios = [next.pressureFastRatio, next.pressureMidRatio, next.pressureSlowRatio].sort((a, b) => a - b);

@@ -59,6 +59,7 @@ export interface QuestionResultData {
     scoreDelta: number;
     isFirstCorrect: boolean;
     damageTaken: number;
+    healed: number;
     hp: number;
     maxHp: number;
     combo: number;
@@ -73,8 +74,12 @@ export interface QuestionResultData {
       attack: number;
       firstCorrectNickname: string | null;
       combo: number;
+      attackerUserIds: string[];
+      desperationUserIds: string[];
       targets: Array<{ userId: string; nickname: string; damage: number }>;
     }>;
+    heals: Array<{ userId: string; nickname: string; amount: number }>;
+    perfectDefenseTeams: number[];
     tkoWinnerTeam: number | null;
   };
   isLastQuestion: boolean;

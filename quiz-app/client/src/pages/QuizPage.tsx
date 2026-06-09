@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import katex from "katex";
 import socket from "../socket";
 import type { ClientQuestion, QuestionResultData, MatchInfo, TimePressureData, AnswerCorrectData, PlayerScoreData } from "../types";
+import BattleFX, { type BattleFXHandle } from "../components/BattleFX";
+import { sfx } from "../lib/sfx";
 import styles from "./QuizPage.module.css";
 
 interface QuizPageProps {
@@ -33,6 +35,11 @@ function hpPct(s: BattleStat): number {
   return s.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((s.hp / s.maxHp) * 100))) : 0;
 }
 
+/* 위험(저체력 생존) 여부 — 위험 표시용 */
+function isDanger(s: BattleStat): boolean {
+  return !s.downed && s.maxHp > 0 && s.hp / s.maxHp <= DANGER_RATIO;
+}
+
 function renderLatex(text: string): string {
   if (!text) return "";
   let result = text.replace(/\$\$([\s\S]*?)\$\$/g, (_m, latex) => {
@@ -52,6 +59,18 @@ function LatexText({ text }: { text: string }) {
 
 const CHOICE_COLORS = ["choiceRed", "choiceBlue", "choiceGreen", "choiceOrange"] as const;
 const CHOICE_SHAPES = ["\u25B2", "\u25C6", "\u25CF", "\u25A0"];
+const CHOICE_HEX = ["#ff315f", "#00e5ff", "#00ff95", "#ffd400"];
+
+/* \u2500\u2500 \uC804\uD22C FX \uCEEC\uB7EC \u2500\u2500 */
+const FX_ALLY = "#00e5ff";   // \uC6B0\uB9AC\uD300(\uC544\uAD70) \uACF5\uACA9
+const FX_FOE = "#ff315f";    // \uC0C1\uB300\uD300(\uC801) \uACF5\uACA9 / \uD53C\uACA9
+const FX_GOLD = "#ffd400";   // \uC120\uCDE8 / \uC2B9\uB9AC
+const FX_HEAL = "#9bf6ff";   // \uC544\uAD70 \uB370\uBBF8\uC9C0 \uC22B\uC790
+const FX_DESP = "#ff7a00";   // \uC704\uAE30 \uBC18\uACA9(\uADFC\uC131)
+const FX_HEALG = "#00ff95";  // \uCEF4\uBC31 \uD790(\uD68C\uBCF5)
+const FX_SHIELD = "#00e5ff"; // \uC644\uC804 \uBC29\uC5B4 \uBC29\uD328
+
+const DANGER_RATIO = 0.3;    // \uC774 HP \uBE44\uC728 \uC774\uD558 = \uC704\uD5D8
 
 /* ── 참가자 아바타 컬러 ── */
 const AVATAR_COLORS = [
@@ -82,6 +101,54 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
   const [showChoices, setShowChoices] = useState(false);
   const [showTimePressure, setShowTimePressure] = useState(false);
   const [showCorrectToast, setShowCorrectToast] = useState(false);
+
+  /* ── 전투 FX 참조 ── */
+  const fxRef = useRef<BattleFXHandle>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const myTeamRef = useRef<HTMLDivElement>(null);
+  const enemyTeamRef = useRef<HTMLDivElement>(null);
+  const playersBarRef = useRef<HTMLDivElement>(null);
+  const reducedRef = useRef(false);
+  useEffect(() => {
+    reducedRef.current = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  }, []);
+
+  /* 화면 흔들림(스크린 셰이크) — 컨테이너에 클래스 토글 */
+  const shakeScreen = useCallback((cls: string, dur = 420) => {
+    const el = containerRef.current;
+    if (!el || reducedRef.current) return;
+    el.classList.remove(styles.shakeS, styles.shakeM, styles.shakeL);
+    void el.offsetWidth; // 리플로우로 애니메이션 재시작
+    el.classList.add(styles[cls]);
+    window.setTimeout(() => el.classList.remove(styles[cls]), dur);
+  }, []);
+
+  /* 패널 피격 플래시 */
+  const flashPanel = useCallback((side: "mine" | "enemy", dur = 360) => {
+    const el = side === "mine" ? myTeamRef.current : enemyTeamRef.current;
+    if (!el || reducedRef.current) return;
+    el.classList.remove(styles.panelHit);
+    void el.offsetWidth;
+    el.classList.add(styles.panelHit);
+    window.setTimeout(() => el.classList.remove(styles.panelHit), dur);
+  }, []);
+
+  const rectCenter = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+  const getChipCenter = useCallback((uid: string) => {
+    const root = playersBarRef.current;
+    if (!root) return null;
+    const safe = (window.CSS && CSS.escape) ? CSS.escape(uid) : uid;
+    const el = root.querySelector(`[data-uid="${safe}"]`);
+    return el ? rectCenter(el) : null;
+  }, []);
+  const getTeamCenter = useCallback((side: "mine" | "enemy") => {
+    const el = side === "mine" ? myTeamRef.current : enemyTeamRef.current;
+    return el ? rectCenter(el) : null;
+  }, []);
+
   const bgParticles = useMemo(() => Array.from({ length: 42 }, () => ({
     left: `${Math.random() * 100}%`,
     animationDelay: `${Math.random() * 8}s`,
@@ -100,6 +167,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
 
   const players = useMemo(() => matchInfo?.users ?? [], [matchInfo]);
   const me = useMemo(() => players.find((p) => p.userId === userId), [players, userId]);
+  const nameOf = useCallback((uid: string) => players.find((p) => p.userId === uid)?.nickname ?? "참가자", [players]);
 
   /* 팀 구성 */
   const myTeamId = me?.teamId ?? 0;
@@ -195,13 +263,213 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
     return () => clearInterval(iv);
   }, [questionResult]);
 
+  /* ════ 전투 이펙트 연출 (결과 페이즈) ════ */
+  useEffect(() => {
+    const fx = fxRef.current;
+    if (!questionResult || !fx || reducedRef.current) return;
+
+    const timers: number[] = [];
+    const at = (ms: number, fn: () => void) => { timers.push(window.setTimeout(fn, ms)); };
+    const screenMid = () => ({ x: window.innerWidth / 2, y: window.innerHeight * 0.42 });
+
+    const myRes = questionResult.results.find((r) => r.userId === userId);
+    const myDmg = myRes?.damageTaken ?? 0;
+
+    /* 1) 내 결과 즉발 반응 */
+    at(150, () => {
+      if (myRes?.isCorrect) {
+        fx.flash(FX_ALLY, 0.13);
+        const p = getChipCenter(userId);
+        if (p) fx.charge(p.x, p.y, FX_GOLD);
+      } else if (myDmg > 0) {
+        fx.flash(FX_FOE, 0.2);
+        shakeScreen("shakeM");
+      }
+    });
+
+    /* 2) 완전 방어 방패 (공격이 무산된 팀) */
+    questionResult.battle.perfectDefenseTeams.forEach((teamId, i) => {
+      const side: "mine" | "enemy" = teamId === myTeamId ? "mine" : "enemy";
+      at(360 + i * 120, () => {
+        const c = getTeamCenter(side) ?? screenMid();
+        fx.ring(c.x, c.y, FX_SHIELD, { power: 1.8 });
+        fx.charge(c.x, c.y, FX_SHIELD);
+        fx.damageText(c.x, c.y - 6, "방어!", { color: FX_SHIELD, size: 24 });
+        flashPanel(side);
+        if (side === "mine") fx.flash(FX_SHIELD, 0.1);
+      });
+    });
+
+    /* 3) 팀 공격 연출: 실제 공격자 칩 → 피격자 칩 빔 → 명중 임팩트 */
+    let cursor = 300;
+    for (const ta of questionResult.battle.teamAttacks) {
+      if (ta.attack <= 0 || ta.targets.length === 0) continue;
+      const ally = ta.teamId === myTeamId;
+      const beamColor = ally ? FX_ALLY : FX_FOE;
+      const hitSide: "mine" | "enemy" = ally ? "enemy" : "mine";
+      const attackerIds = ta.attackerUserIds.slice(0, 4);
+      const despSet = new Set(ta.desperationUserIds);
+
+      // 선공 플레어
+      if (ta.firstCorrectNickname) {
+        at(Math.max(0, cursor - 90), () => {
+          const src = getTeamCenter(ally ? "mine" : "enemy");
+          if (src) fx.ring(src.x, src.y, FX_GOLD, { power: 1.3 });
+        });
+      }
+
+      ta.targets.forEach((t, i) => {
+        const fireAt = cursor + i * 150;
+        const dstAt = () => getChipCenter(t.userId) ?? getTeamCenter(hitSide) ?? screenMid();
+        // 각 공격자 칩에서 피격자에게 빔 (누가 누구를 공격했는지)
+        if (attackerIds.length === 0) {
+          at(fireAt, () => {
+            const fb = getTeamCenter(ally ? "mine" : "enemy") ?? screenMid();
+            const dst = dstAt();
+            fx.beam(fb.x, fb.y, dst.x, dst.y, beamColor);
+          });
+        } else {
+          attackerIds.forEach((uid, k) => {
+            at(fireAt + k * 55, () => {
+              const sp = getChipCenter(uid) ?? getTeamCenter(ally ? "mine" : "enemy") ?? screenMid();
+              const dst = dstAt();
+              const desp = despSet.has(uid);
+              fx.beam(sp.x, sp.y, dst.x, dst.y, desp ? FX_DESP : beamColor);
+              if (desp) fx.ring(sp.x, sp.y, FX_DESP, { power: 1.1 });
+            });
+          });
+        }
+        // 명중
+        at(fireAt + 170, () => {
+          const dst = dstAt();
+          const desp = ta.desperationUserIds.length > 0;
+          const power = Math.min(2.4, 0.8 + t.damage / 20);
+          fx.impact(dst.x, dst.y, { color: desp ? FX_DESP : beamColor, power });
+          fx.damageText(dst.x, dst.y, `-${t.damage}`, {
+            color: ally ? FX_HEAL : "#ff7a96",
+            size: 26 + Math.min(22, t.damage),
+          });
+          flashPanel(hitSide);
+          const isMeHit = t.userId === userId;
+          shakeScreen(isMeHit ? "shakeL" : ally ? "shakeS" : "shakeM");
+          if (isMeHit) fx.flash(FX_FOE, 0.16);
+        });
+      });
+      cursor += ta.targets.length * 150 + 240;
+    }
+
+    /* 4) 컴백 힐 */
+    questionResult.battle.heals.forEach((hl, i) => {
+      at(cursor + i * 170, () => {
+        const pos = getChipCenter(hl.userId) ?? getTeamCenter("mine") ?? screenMid();
+        fx.charge(pos.x, pos.y, FX_HEALG);
+        fx.ring(pos.x, pos.y, FX_HEALG, { power: 1.2 });
+        fx.damageText(pos.x, pos.y, `+${hl.amount}`, { color: FX_HEALG, size: 28 });
+        if (hl.userId === userId) fx.flash(FX_HEALG, 0.12);
+      });
+    });
+    cursor += questionResult.battle.heals.length * 170;
+
+    /* 5) KO 대폭발 */
+    questionResult.battle.koUserIds.forEach((uid, i) => {
+      at(cursor + i * 280, () => {
+        const dst = getChipCenter(uid) ?? screenMid();
+        fx.ko(dst.x, dst.y);
+        fx.flash("#ffffff", 0.22);
+        shakeScreen("shakeL");
+      });
+    });
+    cursor += questionResult.battle.koUserIds.length * 280;
+
+    /* 6) TKO 승패 */
+    if (questionResult.battle.tkoWinnerTeam !== null) {
+      const win = questionResult.battle.tkoWinnerTeam === myTeamId;
+      at(cursor + 220, () => {
+        if (win) {
+          const c = getTeamCenter("mine") ?? screenMid();
+          fx.victory(c.x, c.y);
+          fx.flash(FX_GOLD, 0.2);
+        } else {
+          fx.flash(FX_FOE, 0.18);
+          shakeScreen("shakeM");
+        }
+      });
+    }
+
+    return () => timers.forEach((t) => clearTimeout(t));
+  }, [questionResult, myTeamId, userId, getChipCenter, getTeamCenter, shakeScreen, flashPanel]);
+
+  /* ════ 결과 효과음 (감소모션과 무관하게 재생) ════ */
+  useEffect(() => {
+    if (!questionResult) return;
+    const myRes = questionResult.results.find((r) => r.userId === userId);
+    const timers: number[] = [];
+    const at = (ms: number, fn: () => void) => { timers.push(window.setTimeout(fn, ms)); };
+    at(160, () => {
+      if (myRes?.isCorrect) sfx.play("correct");
+      else if ((myRes?.damageTaken ?? 0) > 0) sfx.play("hit");
+      else if (myRes && myRes.selectedIndex !== null && !myRes.downed) sfx.play("wrong");
+    });
+    if ((myRes?.healed ?? 0) > 0) at(440, () => sfx.play("heal"));
+    if (questionResult.battle.koUserIds.length > 0) at(640, () => sfx.play("ko"));
+    if (questionResult.battle.tkoWinnerTeam !== null) {
+      const win = questionResult.battle.tkoWinnerTeam === myTeamId;
+      at(920, () => sfx.play(win ? "win" : "lose"));
+    }
+    return () => timers.forEach((t) => clearTimeout(t));
+  }, [questionResult, userId, myTeamId]);
+
+  /* ════ 정답 적립 순간 스파크 (진행 중) ════ */
+  useEffect(() => {
+    if (!answerCorrect || questionResult) return;
+    if (answerCorrect.userId === userId) sfx.play("correct");
+    const fx = fxRef.current;
+    if (!fx || reducedRef.current) return;
+    const pos = getChipCenter(answerCorrect.userId);
+    if (!pos) return;
+    const mine = answerCorrect.userId === userId;
+    fx.charge(pos.x, pos.y, mine ? FX_GOLD : FX_ALLY);
+    if (answerCorrect.isFirst) {
+      fx.ring(pos.x, pos.y, FX_GOLD, { power: 1.5 });
+      fx.damageText(pos.x, pos.y - 18, "선취!", { color: FX_GOLD, size: 22 });
+    } else if (answerCorrect.combo > 1) {
+      fx.damageText(pos.x, pos.y - 18, `${answerCorrect.combo} COMBO`, { color: FX_GOLD, size: 20 });
+    }
+  }, [answerCorrect, questionResult, userId, getChipCenter]);
+
+  /* ════ 시간 압박 번개 (진행 중) ════ */
+  useEffect(() => {
+    if (!timePressure || questionResult) return;
+    const fromMe = timePressure.attackerUserId === userId;
+    if (!fromMe) sfx.play("hit");
+    const fx = fxRef.current;
+    if (!fx || reducedRef.current) return;
+    const attacker = getChipCenter(timePressure.attackerUserId);
+    const me = getChipCenter(userId);
+    if (fromMe) {
+      const from = attacker ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.7 };
+      fx.bolt(from.x, from.y, window.innerWidth / 2, 40, FX_ALLY);
+      fx.flash(FX_ALLY, 0.1);
+    } else {
+      const from = attacker ?? { x: window.innerWidth / 2, y: 40 };
+      const to = me ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.7 };
+      fx.bolt(from.x, from.y, to.x, to.y, FX_FOE);
+      fx.flash(FX_FOE, 0.14);
+      shakeScreen("shakeS");
+    }
+  }, [timePressure, questionResult, userId, getChipCenter, shakeScreen]);
+
   const iAmDowned = getStat(userId).downed;
 
-  const handleSelect = useCallback((index: number) => {
+  const handleSelect = useCallback((index: number, e?: { clientX: number; clientY: number }) => {
     if (submitted || selectedIndex !== null || !question || getStat(userId).downed) return;
     setSelectedIndex(index);
     setSubmitted(true);
     socket.emit("submitAnswer", { selectedIndex: index });
+    sfx.play("click");
+    if (!reducedRef.current && fxRef.current && e) {
+      fxRef.current.impact(e.clientX, e.clientY, { color: CHOICE_HEX[index] ?? FX_ALLY, power: 0.7 });
+    }
   }, [submitted, selectedIndex, question, getStat, userId]);
 
   if (!question) {
@@ -256,7 +524,9 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
   const tkoWinnerTeam = questionResult?.battle.tkoWinnerTeam ?? null;
 
   return (
-    <div className={`${styles.container} ${isResultPhase ? styles.resultPhase : ""} ${battleStateClass} ${showTimePressure ? styles.timePressureHit : ""}`}>
+    <>
+      <BattleFX ref={fxRef} />
+      <div ref={containerRef} className={`${styles.container} ${isResultPhase ? styles.resultPhase : ""} ${battleStateClass} ${showTimePressure ? styles.timePressureHit : ""}`}>
       {/* 배경 파티클 */}
       <div className={styles.bgParticles}>
         {bgParticles.map((style, i) => (
@@ -279,6 +549,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
           />
         ))}
       </div>
+      <div className={styles.fxOverlay} aria-hidden="true" />
 
       {!connected && <div className={styles.connectionBar}>재연결 중...</div>}
 
@@ -339,7 +610,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
 
       <div className={styles.battleHud}>
         {/* 우리 팀 */}
-        <div className={`${styles.teamPanel} ${styles.teamMine} ${myAgg.downed ? styles.teamWiped : ""}`}>
+        <div ref={myTeamRef} className={`${styles.teamPanel} ${styles.teamMine} ${myAgg.downed ? styles.teamWiped : ""}`}>
           <div className={styles.teamHead}>
             <span className={styles.teamName}>{teamLabel(myTeamId)}</span>
             <span className={styles.teamMineTag}>우리팀</span>
@@ -352,7 +623,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
             {myTeam.map((p) => {
               const s = getStat(p.userId);
               return (
-                <span key={p.userId} className={`${styles.teamMember} ${p.userId === userId ? styles.teamMemberMe : ""} ${s.downed ? styles.teamMemberKo : ""}`}>
+                <span key={p.userId} className={`${styles.teamMember} ${p.userId === userId ? styles.teamMemberMe : ""} ${s.downed ? styles.teamMemberKo : ""} ${isDanger(s) ? styles.danger : ""}`}>
                   <span className={styles.teamMemberName}>{p.nickname}</span>
                   {s.combo > 1 && <i className={styles.teamMemberCombo}>🔥{s.combo}</i>}
                   {s.downed ? <em className={styles.teamMemberKoTag}>KO</em> : <i className={styles.teamMemberHp}>{s.hp}</i>}
@@ -369,7 +640,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
 
         {/* 상대 팀 */}
         {isTeamBattle ? (
-          <div className={`${styles.teamPanel} ${styles.teamEnemy} ${enemyAgg.downed ? styles.teamWiped : ""}`}>
+          <div ref={enemyTeamRef} className={`${styles.teamPanel} ${styles.teamEnemy} ${enemyAgg.downed ? styles.teamWiped : ""}`}>
             <div className={styles.teamHead}>
               <span className={styles.teamName}>{teamLabel(enemyTeamId)}</span>
               <span className={styles.teamEnemyTag}>상대팀</span>
@@ -382,7 +653,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
               {enemyTeam.map((p) => {
                 const s = getStat(p.userId);
                 return (
-                  <span key={p.userId} className={`${styles.teamMember} ${s.downed ? styles.teamMemberKo : ""}`}>
+                  <span key={p.userId} className={`${styles.teamMember} ${s.downed ? styles.teamMemberKo : ""} ${isDanger(s) ? styles.danger : ""}`}>
                     <span className={styles.teamMemberName}>{p.nickname}</span>
                     {s.combo > 1 && <i className={styles.teamMemberCombo}>🔥{s.combo}</i>}
                     {s.downed ? <em className={styles.teamMemberKoTag}>KO</em> : <i className={styles.teamMemberHp}>{s.hp}</i>}
@@ -409,7 +680,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       </div>
 
       {/* ── 참가자 바 ── */}
-      <div className={styles.playersBar}>
+      <div ref={playersBarRef} className={styles.playersBar}>
         {players.map((p, idx) => {
           const answered = answeredUsers.has(p.userId);
           const isMe = p.userId === userId;
@@ -425,7 +696,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
           const pr = resultByUser.get(p.userId);
           const teamClass = p.teamId === myTeamId ? styles.chipTeamMine : styles.chipTeamEnemy;
           return (
-            <div key={p.userId} className={`${styles.playerChip} ${teamClass} ${isMe ? styles.playerMe : ""} ${answered && !isResultPhase ? styles.playerAnswered : ""} ${st.downed ? styles.playerDowned : ""} ${resultState}`}>
+            <div key={p.userId} data-uid={p.userId} className={`${styles.playerChip} ${teamClass} ${isMe ? styles.playerMe : ""} ${answered && !isResultPhase ? styles.playerAnswered : ""} ${st.downed ? styles.playerDowned : ""} ${isDanger(st) ? styles.danger : ""} ${resultState}`}>
               <div className={styles.playerAvatar} style={{ background: getAvatarColor(idx) }}>
                 {p.isBot ? "봇" : getInitial(p.nickname)}
               </div>
@@ -455,7 +726,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
           <button
             key={index}
             className={getChoiceClass(index)}
-            onClick={() => handleSelect(index)}
+            onClick={(e) => handleSelect(index, e)}
             disabled={submitted || isResultPhase || iAmDowned}
             style={{ animationDelay: `${index * 0.08}s` }}
           >
@@ -501,21 +772,37 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
             {!myResult?.isCorrect && (myResult?.damageTaken ?? 0) > 0 && (
               <span className={styles.bannerDmg}>-{myResult?.damageTaken} HP{myResult?.justDowned && <em> KO</em>}</span>
             )}
+            {(myResult?.healed ?? 0) > 0 && (
+              <span className={styles.bannerHeal}>+{myResult?.healed} HP</span>
+            )}
           </div>
 
           {/* 전투 로그 */}
-          {(questionResult.battle.teamAttacks.some((t) => t.attack > 0 && t.targets.length > 0) || koList.length > 0 || tkoWinnerTeam !== null) && (
+          {(questionResult.battle.teamAttacks.some((t) => t.attack > 0 && t.targets.length > 0)
+            || questionResult.battle.heals.length > 0
+            || questionResult.battle.perfectDefenseTeams.length > 0
+            || koList.length > 0 || tkoWinnerTeam !== null) && (
             <div className={styles.battleLog}>
               {questionResult.battle.teamAttacks
                 .filter((ta) => ta.attack > 0 && ta.targets.length > 0)
                 .map((ta) => (
                   <span key={ta.teamId} className={ta.teamId === myTeamId ? styles.battleLogAlly : styles.battleLogFoe}>
-                    {ta.teamId === myTeamId ? "⚔️ 우리팀" : "🛡️ 상대팀"} 공격
-                    {ta.firstCorrectNickname && ` (선취 ${ta.firstCorrectNickname}${ta.combo > 1 ? ` 🔥${ta.combo}` : ""})`}
+                    {ta.teamId === myTeamId ? "⚔️ " : "🗡️ "}
+                    {ta.attackerUserIds.length
+                      ? ta.attackerUserIds.map(nameOf).join("·")
+                      : (ta.teamId === myTeamId ? "우리팀" : "상대팀")}
                     {" → "}
                     {ta.targets.map((t) => `${t.nickname} -${t.damage}`).join(", ")}
+                    {ta.firstCorrectNickname && <em className={styles.logTagFirst}>선취 {ta.firstCorrectNickname}{ta.combo > 1 ? ` 🔥${ta.combo}` : ""}</em>}
+                    {ta.desperationUserIds.length > 0 && <em className={styles.logTagDesp}>위기반격</em>}
                   </span>
                 ))}
+              {questionResult.battle.perfectDefenseTeams.map((tid) => (
+                <span key={`def_${tid}`} className={styles.battleLogDefense}>🛡️ {teamLabel(tid)} 완전 방어!</span>
+              ))}
+              {questionResult.battle.heals.map((h) => (
+                <span key={`heal_${h.userId}`} className={styles.battleLogHeal}>💚 {h.nickname} +{h.amount} 회복</span>
+              ))}
               {koList.map((uid) => {
                 const ko = questionResult.results.find((r) => r.userId === uid);
                 return <span key={uid} className={styles.battleLogKo}>💥 {ko?.nickname ?? "참가자"} 쓰러짐!</span>;
@@ -600,7 +887,8 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

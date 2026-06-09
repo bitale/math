@@ -88,8 +88,9 @@ export interface QuestionResultData {
     selectedIndex: number | null;
     isCorrect: boolean;
     scoreDelta: number;      // 이 문제에서 얻은 점수
-    isFirstCorrect: boolean; // 팀 선취 여부
+    isFirstCorrect: boolean; // 전역 선공(선취) 여부
     damageTaken: number;     // 이 문제에서 입은 피해
+    healed: number;          // 이 문제에서 회복한 체력(컴백 힐)
     hp: number;
     maxHp: number;
     combo: number;
@@ -102,10 +103,14 @@ export interface QuestionResultData {
     teamAttacks: Array<{
       teamId: number;
       attack: number;                    // 팀 총 공격력
-      firstCorrectNickname: string | null; // 팀 선취자
-      combo: number;                     // 선취자 콤보
+      firstCorrectNickname: string | null; // 선공(선취)자 — 선공 가진 팀에만
+      combo: number;                     // 선공자 콤보
+      attackerUserIds: string[];         // 이 공격에 기여한 정답자들 (누가 공격했는지)
+      desperationUserIds: string[];      // 위기 반격(저체력 정답)으로 추가타를 낸 사람들
       targets: Array<{ userId: string; nickname: string; damage: number }>; // 적팀 피격자
     }>;
+    heals: Array<{ userId: string; nickname: string; amount: number }>; // 컴백 힐
+    perfectDefenseTeams: number[];       // 적 공격을 완전 방어한 팀
     tkoWinnerTeam: number | null;        // 이 문제에서 한 팀 전멸 시 승리 팀
   };
   isLastQuestion: boolean;

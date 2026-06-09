@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, FormEvent } from "react";
 import socket from "../socket";
+import { sfx } from "../lib/sfx";
 import styles from "./NicknamePage.module.css";
 
 interface NicknamePageProps {
@@ -39,6 +40,7 @@ function NicknamePage({ onSubmit, connected }: NicknamePageProps) {
     if (!isValid || submitting || !connected) return;
     setServerError("");
     setSubmitting(true);
+    sfx.play("select");
     onSubmit(value.trim());
   }, [isValid, submitting, connected, onSubmit, value]);
 
@@ -51,7 +53,7 @@ function NicknamePage({ onSubmit, connected }: NicknamePageProps) {
           <img className={styles.logo} src="/assets/icon-bolt.jpg" alt="" />
           <div className={styles.logoRing} />
         </div>
-        <h1 className={styles.title}>퀴즈 배틀</h1>
+        <h1 className={`${styles.title} gameTitle`}>퀴즈 배틀</h1>
         <p className={styles.subtitle}>닉네임을 정해주세요</p>
 
         <form className={styles.form} onSubmit={handleSubmit}>

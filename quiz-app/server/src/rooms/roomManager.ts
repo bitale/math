@@ -238,11 +238,8 @@ export class RoomManager {
     }
 
     const isCorrect = currentQ.choices[selectedIndex] === currentQ.answer;
-    // 팀 선취: 같은 팀에서 먼저 정답을 맞춘 사람이 없고 이번이 정답이면 선취
-    const myTeam = myScore?.teamId ?? 0;
-    const isFirstCorrect = isCorrect && !answers.some(
-      (a) => a.isCorrect && (room.scores.get(a.userId)?.teamId ?? 0) === myTeam,
-    );
+    // 전역 선공(선취): 이 문제에서 아무도 아직 정답을 못 냈고 이번이 정답이면 선공 — 단 한 명만
+    const isFirstCorrect = isCorrect && !answers.some((a) => a.isCorrect);
     // 정산 전이므로 콤보는 (현재 콤보 + 1)이 예정값
     const comboNext = isCorrect ? (room.scores.get(userId)?.combo ?? 0) + 1 : 0;
     const answeredAt = Date.now();
@@ -426,12 +423,13 @@ export class RoomManager {
     const teamIds = Array.from(new Set(allScores.map((s) => s.teamId))).sort((a, b) => a - b);
     const isTeamBattle = !room.isSolo && teamIds.length >= 2;
 
-    // ── 팀별 선취(가장 먼저 정답을 낸 팀원) ──
-    const teamFirstCorrect = new Map<number, string>();
-    for (const a of answers.filter((x) => x.isCorrect && x.answeredAt != null).sort((x, y) => x.answeredAt! - y.answeredAt!)) {
-      const t = room.scores.get(a.userId)?.teamId ?? 0;
-      if (!teamFirstCorrect.has(t)) teamFirstCorrect.set(t, a.userId);
-    }
+    // ── 전역 선공(선취): 이 문제에서 가장 먼저 정답을 낸 단 한 명 ──
+    const firstStrikeUserId = answers
+      .filter((x) => x.isCorrect && x.answeredAt != null)
+      .sort((x, y) => x.answeredAt! - y.answeredAt!)[0]?.userId ?? null;
+    const firstStrikeTeam = firstStrikeUserId != null
+      ? (room.scores.get(firstStrikeUserId)?.teamId ?? null)
+      : null;
 
     // ── 1차 패스: 콤보 + 점수 + 통계 ──
     const perUser = new Map<string, { scoreDelta: number; isFirst: boolean }>();
@@ -444,7 +442,7 @@ export class RoomManager {
         if (score.combo > score.maxCombo) score.maxCombo = score.combo;
         const comboSteps = Math.min(Math.max(0, score.combo - 1), battle.comboBonusMaxSteps);
         const comboMult = 1 + battle.comboBonusStep * comboSteps;
-        const isFirst = teamFirstCorrect.get(score.teamId) === userId;
+        const isFirst = userId === firstStrikeUserId; // 전역 선공 1명만
         const gained = Math.round(points * comboMult) + (isFirst ? battle.firstCorrectBonus : 0);
         score.score += gained;
         score.correct += 1;
@@ -460,6 +458,7 @@ export class RoomManager {
     const koUserIds: string[] = [];
     const damageByUser = new Map<string, number>();
     const teamAttacks: QuestionResultData["battle"]["teamAttacks"] = [];
+    const perfectDefenseTeams: number[] = [];
 
     const answeredCorrect = (uid: string) => answers.find((a) => a.userId === uid)?.isCorrect ?? false;
 
@@ -468,19 +467,28 @@ export class RoomManager {
       for (const teamId of teamIds) {
         const attackers = allScores.filter((s) => s.teamId === teamId && !s.downed && answeredCorrect(s.userId));
         let attack = 0;
+        const attackerUserIds: string[] = [];
+        const desperationUserIds: string[] = [];
         for (const atk of attackers) {
           const steps = Math.min(Math.max(0, atk.combo - 1), battle.comboDamageMaxSteps);
-          attack += battle.hitBaseDamage + battle.comboDamageStep * steps;
+          let contribution = battle.hitBaseDamage + battle.comboDamageStep * steps;
+          // 위기 반격(근성): 저체력 정답자는 추가 공격력
+          if (battle.desperationDamageBonus > 0 && atk.maxHp > 0 && atk.hp / atk.maxHp <= battle.desperationHpRatio) {
+            contribution += battle.desperationDamageBonus;
+            desperationUserIds.push(atk.userId);
+          }
+          attack += contribution;
+          attackerUserIds.push(atk.userId);
         }
-        const firstId = teamFirstCorrect.get(teamId);
+        // 전역 선공: 선공을 가진 팀만 선취 추가타
         let firstCorrectNickname: string | null = null;
         let combo = 0;
-        if (firstId) {
+        if (firstStrikeTeam === teamId && firstStrikeUserId) {
           attack += battle.firstStrikeDamage;
-          firstCorrectNickname = nameOf(firstId);
-          combo = room.scores.get(firstId)?.combo ?? 0;
+          firstCorrectNickname = nameOf(firstStrikeUserId);
+          combo = room.scores.get(firstStrikeUserId)?.combo ?? 0;
         }
-        teamAttacks.push({ teamId, attack, firstCorrectNickname, combo, targets: [] });
+        teamAttacks.push({ teamId, attack, firstCorrectNickname, combo, attackerUserIds, desperationUserIds, targets: [] });
       }
 
       // 각 팀의 공격을 적팀 노출자(쓰러지지 않았고 오답/미응답) 중 HP 최저에게 집중타
@@ -491,7 +499,14 @@ export class RoomManager {
         const exposed = allScores
           .filter((s) => s.teamId === enemyTeam && !s.downed && !answeredCorrect(s.userId))
           .sort((a, b) => a.hp - b.hp);
-        if (exposed.length === 0) continue; // 적팀 완전 방어
+        if (exposed.length === 0) {
+          // 적팀 완전 방어 — 살아있는 수비수가 모두 정답
+          const aliveDefenders = allScores.filter((s) => s.teamId === enemyTeam && !s.downed);
+          if (aliveDefenders.length > 0 && !perfectDefenseTeams.includes(enemyTeam)) {
+            perfectDefenseTeams.push(enemyTeam);
+          }
+          continue;
+        }
         const target = exposed[0];
         const missed = !answers.find((a) => a.userId === target.userId);
         const dmg = ta.attack + (missed ? battle.missExtraDamage : 0);
@@ -526,6 +541,27 @@ export class RoomManager {
       if (wiped.length === 1) tkoWinnerTeam = teamIds.find((t) => t !== wiped[0]) ?? null;
     }
 
+    // ── 컴백 힐: 선공 팀의 총 HP가 약하면 가장 다친 생존 팀원을 소량 회복 ──
+    const heals: QuestionResultData["battle"]["heals"] = [];
+    if (isTeamBattle && firstStrikeTeam !== null && battle.comebackHealAmount > 0) {
+      const members = allScores.filter((s) => s.teamId === firstStrikeTeam);
+      const totalHp = members.reduce((sum, s) => sum + s.hp, 0);
+      const totalMax = members.reduce((sum, s) => sum + s.maxHp, 0);
+      const ratio = totalMax > 0 ? totalHp / totalMax : 1;
+      if (ratio <= battle.comebackHealThreshold) {
+        const wounded = members
+          .filter((s) => !s.downed && s.hp < s.maxHp)
+          .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+        if (wounded) {
+          const before = wounded.hp;
+          wounded.hp = Math.min(wounded.maxHp, wounded.hp + battle.comebackHealAmount);
+          const amount = wounded.hp - before;
+          if (amount > 0) heals.push({ userId: wounded.userId, nickname: nameOf(wounded.userId), amount });
+        }
+      }
+    }
+    const healByUser = new Map(heals.map((h) => [h.userId, h.amount]));
+
     // ── 결과 배열 ──
     const results: QuestionResultData["results"] = [];
     for (const [userId, score] of room.scores.entries()) {
@@ -543,6 +579,7 @@ export class RoomManager {
         scoreDelta: meta.scoreDelta,
         isFirstCorrect: meta.isFirst,
         damageTaken: damageByUser.get(userId) ?? 0,
+        healed: healByUser.get(userId) ?? 0,
         hp: score.hp,
         maxHp: score.maxHp,
         combo: score.combo,
@@ -571,7 +608,7 @@ export class RoomManager {
       nextConnection: q.nextConnection,
       results,
       scores,
-      battle: { koUserIds, teamAttacks, tkoWinnerTeam },
+      battle: { koUserIds, teamAttacks, heals, perfectDefenseTeams, tkoWinnerTeam },
       isLastQuestion: idx >= room.questions.length - 1,
     };
   }
