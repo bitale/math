@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════
    SFX — Web Audio로 합성하는 게임 효과음 (에셋 파일 없음)
    클릭/선택/정답/오답/승리/패배/타격/KO/회복/전환음을 즉석 생성.
-   - 음소거 상태는 localStorage 유지
+   - 음소거 상태는 메모리에만 유지(브라우저 저장소 미사용)
    - 브라우저 정책상 첫 사용자 제스처에서 AudioContext 활성화(arm)
    ════════════════════════════════════════════════════════════ */
 
@@ -9,18 +9,12 @@ export type SfxName =
   | "click" | "select" | "correct" | "wrong"
   | "win" | "lose" | "hit" | "ko" | "heal" | "whoosh";
 
-const STORE_KEY = "quiz-sfx-muted";
-
 type Wave = OscillatorType;
 
 class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   muted = false;
-
-  constructor() {
-    try { this.muted = localStorage.getItem(STORE_KEY) === "1"; } catch { /* noop */ }
-  }
 
   private ensure(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -54,7 +48,6 @@ class Sfx {
 
   setMuted(m: boolean): void {
     this.muted = m;
-    try { localStorage.setItem(STORE_KEY, m ? "1" : "0"); } catch { /* noop */ }
   }
 
   toggle(): boolean { this.setMuted(!this.muted); return this.muted; }

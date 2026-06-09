@@ -7,14 +7,9 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    # DB/관리자 비밀값은 같은 디렉터리의 .env에서만 주입(레포에 커밋 안 됨). .env.example 참고.
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3001
-      # 관리자 페이지(/admin) 최초 시드 비밀번호(이후 DB에서 변경 가능)
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin1234}
-      # MySQL (테스트 서버의 mysql-container)
-      - DB_HOST=${DB_HOST:-192.168.0.110}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-xptmxm123!}
-      - DB_NAME=${DB_NAME:-quiz-app}

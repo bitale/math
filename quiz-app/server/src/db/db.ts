@@ -7,12 +7,13 @@ import { hashPassword } from "../auth/password";
  * DB가 없어도 게임(게스트)은 돌아가도록, 호출부는 실패를 흡수한다.
  */
 
+// 모든 접속 정보는 env로만 주입(코드/레포에 비밀값 기본값 없음). 미설정 시 DB 기능 비활성.
 const cfg = {
-  host: process.env.DB_HOST || "192.168.0.110",
+  host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD ?? "xptmxm123!",
-  database: process.env.DB_NAME || "quiz-app",
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 };
 
 export const ADMIN_USERNAME = "admin";
@@ -20,10 +21,19 @@ export const ADMIN_USERNAME = "admin";
 let pool: mysql.Pool | null = null;
 let ready = false;
 
+function dbConfigured(): boolean {
+  return Boolean(cfg.host && cfg.user && cfg.database);
+}
+
 export function getPool(): mysql.Pool {
+  if (!dbConfigured()) throw new Error("DB env 미설정(DB_HOST/DB_USER/DB_NAME 필요)");
   if (!pool) {
     pool = mysql.createPool({
-      ...cfg,
+      host: cfg.host,
+      port: cfg.port,
+      user: cfg.user,
+      password: cfg.password,
+      database: cfg.database,
       waitForConnections: true,
       connectionLimit: 8,
       charset: "utf8mb4",
@@ -37,6 +47,10 @@ export function dbReady(): boolean {
 }
 
 export async function initDb(): Promise<void> {
+  if (!dbConfigured()) {
+    console.warn("[db] DB env 미설정 — DB 기능 비활성(게스트 플레이만 가능)");
+    return;
+  }
   const p = getPool();
 
   await p.query(`CREATE TABLE IF NOT EXISTS app_settings (
@@ -60,6 +74,36 @@ export async function initDb(): Promise<void> {
     wins INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  // 게임 결과(전적) 저장
+  await p.query(`CREATE TABLE IF NOT EXISTS game (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    grade_key VARCHAR(48) NOT NULL,
+    is_team_battle TINYINT(1) NOT NULL DEFAULT 0,
+    winner_team INT NULL,
+    tko TINYINT(1) NOT NULL DEFAULT 0,
+    player_count INT NOT NULL DEFAULT 0,
+    finished_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  await p.query(`CREATE TABLE IF NOT EXISTS game_player (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    game_id INT NOT NULL,
+    member_id INT NULL,
+    user_id VARCHAR(64) NOT NULL,
+    nickname VARCHAR(24) NOT NULL,
+    is_bot TINYINT(1) NOT NULL DEFAULT 0,
+    team_id INT NOT NULL DEFAULT 0,
+    rank_pos INT NOT NULL DEFAULT 0,
+    score INT NOT NULL DEFAULT 0,
+    correct INT NOT NULL DEFAULT 0,
+    wrong INT NOT NULL DEFAULT 0,
+    missed INT NOT NULL DEFAULT 0,
+    max_combo INT NOT NULL DEFAULT 0,
+    won TINYINT(1) NOT NULL DEFAULT 0,
+    INDEX idx_game (game_id),
+    INDEX idx_member (member_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
   // 기본 관리자 시드(없을 때만). 초기 비밀번호는 ADMIN_PASSWORD env(기본 admin1234)

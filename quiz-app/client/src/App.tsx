@@ -49,6 +49,9 @@ function App() {
   const [reviewHistory, setReviewHistory] = useState<QuestionReview[]>([]);
   const selectedIndexRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 브라우저 저장소 미사용 — 신원은 메모리(ref)로만 유지(네트워크 재연결 시 재인증용)
+  const memberTokenRef = useRef<string | null>(null);
+  const guestNickRef = useRef<string | null>(null);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -66,12 +69,9 @@ function App() {
   useEffect(() => {
     const onConnect = () => {
       setConnected(true);
-      const savedId = localStorage.getItem("quiz-userId");
-      const memberToken = localStorage.getItem("quiz-member-token");
-      const saved = localStorage.getItem("quiz-nickname");
-      if (savedId) socket.emit("reconnectToRoom", { userId: savedId });
-      else if (memberToken) socket.emit("authMember", { token: memberToken });
-      else if (saved) socket.emit("setNickname", { nickname: saved });
+      // 재연결 시 메모리에 남은 신원으로 재인증(회원 토큰 우선, 없으면 게스트 닉네임)
+      if (memberTokenRef.current) socket.emit("authMember", { token: memberTokenRef.current });
+      else if (guestNickRef.current) socket.emit("setNickname", { nickname: guestNickRef.current });
     };
     const onDisconnect = () => { setConnected(false); clearTimer(); };
     socket.on("connect", onConnect);
@@ -82,16 +82,12 @@ function App() {
 
   useEffect(() => {
     const onReconnectFailed = () => {
-      localStorage.removeItem("quiz-userId");
-      const memberToken = localStorage.getItem("quiz-member-token");
-      const saved = localStorage.getItem("quiz-nickname");
-      if (memberToken) socket.emit("authMember", { token: memberToken });
-      else if (saved) socket.emit("setNickname", { nickname: saved });
+      if (memberTokenRef.current) socket.emit("authMember", { token: memberTokenRef.current });
+      else if (guestNickRef.current) socket.emit("setNickname", { nickname: guestNickRef.current });
       else setCurrentPage("nickname");
     };
     const onMemberAuthFailed = () => {
-      localStorage.removeItem("quiz-member-token");
-      localStorage.removeItem("quiz-userId");
+      memberTokenRef.current = null;
       setNickname(null);
       setCurrentPage("nickname");
     };
@@ -108,8 +104,6 @@ function App() {
     const onAccepted = (data: { userId: string; nickname: string }) => {
       setNickname(data.nickname);
       setUserId(data.userId);
-      localStorage.setItem("quiz-nickname", data.nickname);
-      localStorage.setItem("quiz-userId", data.userId);
       if (currentPage === "nickname") setCurrentPage("select");
     };
     socket.on("nicknameAccepted", onAccepted);
@@ -241,12 +235,15 @@ function App() {
 
   // ─── 핸들러 ───
   const handleNicknameSet = useCallback((name: string) => {
+    guestNickRef.current = name;
+    memberTokenRef.current = null;
     socket.emit("setNickname", { nickname: name });
   }, []);
 
-  // 회원 로그인/가입 성공 → 토큰 저장 후 소켓 신원 확립
+  // 회원 로그인/가입 성공 → 토큰을 메모리에 두고 소켓 신원 확립(저장소 미사용)
   const handleMemberAuth = useCallback((token: string) => {
-    localStorage.setItem("quiz-member-token", token);
+    memberTokenRef.current = token;
+    guestNickRef.current = null;
     socket.emit("authMember", { token });
   }, []);
 
@@ -297,9 +294,8 @@ function App() {
 
   const handleChangeNickname = useCallback(() => {
     setNickname(null);
-    localStorage.removeItem("quiz-nickname");
-    localStorage.removeItem("quiz-userId");
-    localStorage.removeItem("quiz-member-token");
+    memberTokenRef.current = null;
+    guestNickRef.current = null;
     setCurrentPage("nickname");
   }, []);
 

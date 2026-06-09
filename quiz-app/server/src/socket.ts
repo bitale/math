@@ -5,6 +5,7 @@ import { validateNickname } from "./utils/sanitize";
 import { getAvailableGrades } from "./quiz/questions";
 import { getFlowSettings } from "./admin/settings";
 import { resolveMember } from "./auth/members";
+import { recordGame } from "./db/games";
 
 /* ── per-socket 상태 ── */
 
@@ -82,7 +83,10 @@ function processQuestionResult(io: Server, roomId: string): void {
   if (result.isLastQuestion || tko) {
     setTimeout(() => {
       const gameResult = roomManager.getGameResult(roomId);
-      if (gameResult) io.to(`room_${roomId}`).emit("gameFinished", gameResult);
+      if (gameResult) {
+        io.to(`room_${roomId}`).emit("gameFinished", gameResult);
+        void recordGame(gameResult.gradeKey, gameResult); // 전적 DB 저장(회원 stats 갱신 포함)
+      }
     }, getFlowSettings().finalResultDelayMs);
   } else {
     setTimeout(() => {
