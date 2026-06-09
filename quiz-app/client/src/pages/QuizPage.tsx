@@ -135,6 +135,10 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
 
   const rectCenter = (el: Element) => {
     const r = el.getBoundingClientRect();
+    // display:none 등 미표시 요소는 0×0 사각형을 반환 → null로 처리해
+    // 초소형 레이아웃(playersBar/battleHud 숨김)에서 FX가 좌상단(0,0)에 몰리지 않고
+    // 호출부의 screenMid() 폴백(화면 중앙)으로 자연스럽게 넘어가게 한다.
+    if (r.width === 0 && r.height === 0) return null;
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
   const getChipCenter = useCallback((uid: string) => {
