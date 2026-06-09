@@ -307,3 +307,51 @@
   .status { margin-top: 5px; font-size: 0.62rem; }
   .dot { width: 5px; height: 5px; }
 }
+
+/* ── 비회원/회원 탭 ── */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 4px;
+  background: rgba(4, 12, 26, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 10px;
+}
+.tab {
+  flex: 1;
+  padding: 9px 10px;
+  font-family: var(--font-tech);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.tabActive {
+  color: #02030a;
+  background: linear-gradient(135deg, #00e5ff, #2bd6ff 45%, #ff2bd6);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
+}
+.linkBtn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: transparent;
+  border: none;
+  text-decoration: underline;
+  opacity: 0.85;
+}
+.linkBtn:hover { opacity: 1; }
+
+@media (max-width: 299px) and (max-height: 299px) {
+  .tabs { margin-bottom: 8px; padding: 3px; }
+  .tab { padding: 6px; font-size: 0.78rem; }
+  .linkBtn { font-size: 0.72rem; margin-top: 6px; }
+}

@@ -1,32 +1,44 @@
 import { randomBytes } from "crypto";
 import type { Request, Response, NextFunction } from "express";
+import { getPool, ADMIN_USERNAME } from "../db/db";
+import { hashPassword, verifyPassword } from "../auth/password";
 
 /*
- * 관리자 로그인 — 비밀번호 1개 + 인메모리 세션 토큰.
- * 비밀번호는 env ADMIN_PASSWORD로 설정(미설정 시 기본값). 토큰은 로그인 시 발급되어
- * 메모리에만 보관되며 서버 재시작 시 모두 무효화된다(테스트 서버 운영용으로 충분).
+ * 관리자 로그인 — DB(admin_account)의 단일 계정 'admin' 비밀번호로 검증.
+ * 세션 토큰은 인메모리(12h). 비밀번호 변경 지원.
  */
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12시간
-
+const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const sessions = new Map<string, number>(); // token → 만료시각(ms)
 
-function sweep(): void {
-  const now = Date.now();
-  for (const [token, exp] of sessions) {
-    if (now > exp) sessions.delete(token);
+/** 비밀번호가 맞으면 세션 토큰 발급, 아니면 null */
+export async function adminLogin(password: unknown): Promise<string | null> {
+  if (typeof password !== "string" || password.length === 0) return null;
+  try {
+    const [rows] = await getPool().query("SELECT password_hash FROM admin_account WHERE username=?", [ADMIN_USERNAME]);
+    const row = (rows as Array<{ password_hash: string }>)[0];
+    if (!row || !verifyPassword(password, row.password_hash)) return null;
+    const token = randomBytes(24).toString("hex");
+    sessions.set(token, Date.now() + TOKEN_TTL_MS);
+    return token;
+  } catch {
+    return null;
   }
 }
 
-/** 비밀번호가 맞으면 세션 토큰 발급, 틀리면 null */
-export function adminLogin(password: unknown): string | null {
-  if (typeof password !== "string" || password.length === 0) return null;
-  if (password !== ADMIN_PASSWORD) return null;
-  sweep();
-  const token = randomBytes(24).toString("hex");
-  sessions.set(token, Date.now() + TOKEN_TTL_MS);
-  return token;
+/** 현재 비밀번호 확인 후 새 비밀번호로 변경 */
+export async function adminChangePassword(oldPassword: unknown, newPassword: unknown): Promise<{ ok: boolean; error?: string }> {
+  if (typeof newPassword !== "string" || newPassword.length < 4) return { ok: false, error: "새 비밀번호는 4자 이상" };
+  if (typeof oldPassword !== "string") return { ok: false, error: "현재 비밀번호를 입력하세요" };
+  try {
+    const [rows] = await getPool().query("SELECT password_hash FROM admin_account WHERE username=?", [ADMIN_USERNAME]);
+    const row = (rows as Array<{ password_hash: string }>)[0];
+    if (!row || !verifyPassword(oldPassword, row.password_hash)) return { ok: false, error: "현재 비밀번호가 올바르지 않습니다" };
+    await getPool().query("UPDATE admin_account SET password_hash=? WHERE username=?", [hashPassword(newPassword), ADMIN_USERNAME]);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "변경에 실패했습니다" };
+  }
 }
 
 export function adminLogout(token: string | undefined | null): void {
@@ -54,3 +66,5 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   }
   next();
 }
+
+export { bearerToken };

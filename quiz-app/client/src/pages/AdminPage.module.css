@@ -204,3 +204,49 @@
     flex: 1;
   }
 }
+
+/* ── 비밀번호 변경 ── */
+.pwPanel {
+  border: 1px solid rgba(0,245,255,0.28);
+  background: rgba(5,7,20,0.78);
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.32);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.pwPanel h2 {
+  margin: 0 0 0.7rem;
+  color: #8b5600;
+  font-size: 0.98rem;
+  font-weight: 950;
+}
+.pwRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.pwRow input {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+  color: #fff;
+  font-weight: 800;
+}
+.pwRow button {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  padding: 0.62rem 1.1rem;
+  background: #ffd166;
+  color: #2b2100;
+  font-weight: 950;
+  box-shadow: 0 7px 0 rgba(34,49,58,0.10);
+}
+.pwMsg {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #8cffc7;
+}

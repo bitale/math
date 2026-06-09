@@ -4,6 +4,7 @@ import { generateUserId } from "./utils/id";
 import { validateNickname } from "./utils/sanitize";
 import { getAvailableGrades } from "./quiz/questions";
 import { getFlowSettings } from "./admin/settings";
+import { resolveMember } from "./auth/members";
 
 /* ── per-socket 상태 ── */
 
@@ -122,7 +123,7 @@ export function initializeSocket(io: Server): void {
     const state = getState(socket.id);
     socket.join("lobby");
 
-    // ─── 닉네임 ───
+    // ─── 닉네임 (비회원/게스트) ───
     socket.on("setNickname", (data: { nickname?: string }) => {
       const nickname = typeof data?.nickname === "string" ? data.nickname.trim() : "";
       const v = validateNickname(nickname);
@@ -130,7 +131,16 @@ export function initializeSocket(io: Server): void {
       const userId = generateUserId();
       state.userId = userId;
       state.nickname = nickname;
-      socket.emit("nicknameAccepted", { userId, nickname });
+      socket.emit("nicknameAccepted", { userId, nickname, isMember: false });
+    });
+
+    // ─── 회원 인증 (REST 로그인 후 받은 토큰으로 게임 신원 확립) ───
+    socket.on("authMember", (data: { token?: string }) => {
+      const m = resolveMember(typeof data?.token === "string" ? data.token : "");
+      if (!m) { socket.emit("memberAuthFailed"); return; }
+      state.userId = m.userId;
+      state.nickname = m.nickname;
+      socket.emit("nicknameAccepted", { userId: m.userId, nickname: m.nickname, isMember: true });
     });
 
     // ─── 과목/학년 목록 요청 ───

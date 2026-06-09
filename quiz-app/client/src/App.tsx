@@ -66,13 +66,12 @@ function App() {
   useEffect(() => {
     const onConnect = () => {
       setConnected(true);
-      const saved = localStorage.getItem("quiz-nickname");
       const savedId = localStorage.getItem("quiz-userId");
-      if (savedId) {
-        socket.emit("reconnectToRoom", { userId: savedId });
-      } else if (saved) {
-        socket.emit("setNickname", { nickname: saved });
-      }
+      const memberToken = localStorage.getItem("quiz-member-token");
+      const saved = localStorage.getItem("quiz-nickname");
+      if (savedId) socket.emit("reconnectToRoom", { userId: savedId });
+      else if (memberToken) socket.emit("authMember", { token: memberToken });
+      else if (saved) socket.emit("setNickname", { nickname: saved });
     };
     const onDisconnect = () => { setConnected(false); clearTimer(); };
     socket.on("connect", onConnect);
@@ -83,13 +82,25 @@ function App() {
 
   useEffect(() => {
     const onReconnectFailed = () => {
-      const saved = localStorage.getItem("quiz-nickname");
       localStorage.removeItem("quiz-userId");
-      if (saved) socket.emit("setNickname", { nickname: saved });
+      const memberToken = localStorage.getItem("quiz-member-token");
+      const saved = localStorage.getItem("quiz-nickname");
+      if (memberToken) socket.emit("authMember", { token: memberToken });
+      else if (saved) socket.emit("setNickname", { nickname: saved });
       else setCurrentPage("nickname");
     };
+    const onMemberAuthFailed = () => {
+      localStorage.removeItem("quiz-member-token");
+      localStorage.removeItem("quiz-userId");
+      setNickname(null);
+      setCurrentPage("nickname");
+    };
     socket.on("reconnectFailed", onReconnectFailed);
-    return () => { socket.off("reconnectFailed", onReconnectFailed); };
+    socket.on("memberAuthFailed", onMemberAuthFailed);
+    return () => {
+      socket.off("reconnectFailed", onReconnectFailed);
+      socket.off("memberAuthFailed", onMemberAuthFailed);
+    };
   }, []);
 
   // ─── 닉네임 ───
@@ -233,6 +244,12 @@ function App() {
     socket.emit("setNickname", { nickname: name });
   }, []);
 
+  // 회원 로그인/가입 성공 → 토큰 저장 후 소켓 신원 확립
+  const handleMemberAuth = useCallback((token: string) => {
+    localStorage.setItem("quiz-member-token", token);
+    socket.emit("authMember", { token });
+  }, []);
+
   const handleSelectGrade = useCallback((gradeKey: string) => {
     setSelectedGrade(gradeKey);
     socket.emit("findMatch", { gradeKey });
@@ -282,6 +299,7 @@ function App() {
     setNickname(null);
     localStorage.removeItem("quiz-nickname");
     localStorage.removeItem("quiz-userId");
+    localStorage.removeItem("quiz-member-token");
     setCurrentPage("nickname");
   }, []);
 
@@ -291,7 +309,7 @@ function App() {
 
   if (!nickname || currentPage === "nickname") {
     pageKey = "nickname";
-    pageEl = <NicknamePage onSubmit={handleNicknameSet} connected={connected} />;
+    pageEl = <NicknamePage onSubmit={handleNicknameSet} onMemberAuth={handleMemberAuth} connected={connected} />;
   } else {
     switch (currentPage) {
       case "select":

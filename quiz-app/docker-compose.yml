@@ -10,5 +10,11 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      # 관리자 페이지(/admin) 로그인 비밀번호 — 운영 시 반드시 변경
+      # 관리자 페이지(/admin) 최초 시드 비밀번호(이후 DB에서 변경 가능)
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin1234}
+      # MySQL (테스트 서버의 mysql-container)
+      - DB_HOST=${DB_HOST:-192.168.0.110}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-xptmxm123!}
+      - DB_NAME=${DB_NAME:-quiz-app}

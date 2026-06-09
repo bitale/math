@@ -169,6 +169,9 @@ function AdminPage() {
   const [status, setStatus] = useState("불러오는 중");
   const [password, setPassword] = useState("");
   const [loginErr, setLoginErr] = useState("");
+  const [pwOld, setPwOld] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
 
   const clearAuth = () => {
     sessionStorage.removeItem("admin-token");
@@ -226,6 +229,24 @@ function AdminPage() {
   const logout = async () => {
     try { await authedFetch("/api/admin/logout", { method: "POST" }); } catch { /* noop */ }
     clearAuth();
+  };
+
+  const changePassword = async () => {
+    setPwMsg("");
+    if (pwNew.length < 4) { setPwMsg("새 비밀번호는 4자 이상이어야 합니다"); return; }
+    try {
+      const res = await authedFetch("/api/admin/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldPassword: pwOld, newPassword: pwNew }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPwMsg(data.error || "변경 실패");
+        return;
+      }
+      setPwOld(""); setPwNew(""); setPwMsg("비밀번호가 변경되었습니다 ✓");
+    } catch { /* 401 처리됨 */ }
   };
 
   const updateBattleField = (key: keyof BattleSettings, value: number) => {
@@ -314,7 +335,29 @@ function AdminPage() {
 
       <section className={styles.summary}>
         <strong>{status}</strong>
-        <span>저장하면 새로 시작되는 문제부터 바로 적용됩니다.</span>
+        <span>저장하면 새로 시작되는 문제부터 바로 적용됩니다. (DB에 영구 저장)</span>
+      </section>
+
+      <section className={styles.pwPanel}>
+        <h2>비밀번호 변경</h2>
+        <div className={styles.pwRow}>
+          <input
+            type="password"
+            placeholder="현재 비밀번호"
+            value={pwOld}
+            onChange={(e) => { setPwOld(e.target.value); setPwMsg(""); }}
+            autoComplete="current-password"
+          />
+          <input
+            type="password"
+            placeholder="새 비밀번호 (4자 이상)"
+            value={pwNew}
+            onChange={(e) => { setPwNew(e.target.value); setPwMsg(""); }}
+            autoComplete="new-password"
+          />
+          <button type="button" onClick={changePassword}>변경</button>
+        </div>
+        {pwMsg && <p className={styles.pwMsg}>{pwMsg}</p>}
       </section>
 
       {settings && (

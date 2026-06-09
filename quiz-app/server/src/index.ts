@@ -4,8 +4,10 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { initializeSocket } from "./socket";
-import { getAdminSettings, resetAdminSettings, updateAdminSettings } from "./admin/settings";
-import { adminLogin, adminLogout, requireAdmin } from "./admin/auth";
+import { getAdminSettings, resetAdminSettings, updateAdminSettings, loadSettingsFromDb } from "./admin/settings";
+import { adminLogin, adminLogout, adminChangePassword, requireAdmin, bearerToken } from "./admin/auth";
+import { initDb, dbReady } from "./db/db";
+import { registerMember, loginMember } from "./auth/members";
 
 const PORT = Number(process.env.PORT) || 3001;
 const isProd = process.env.NODE_ENV === "production";
@@ -31,12 +33,12 @@ if (isProd) {
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", db: dbReady(), timestamp: new Date().toISOString() });
 });
 
 // 관리자 로그인 (비보호) → 세션 토큰 발급
-app.post("/api/admin/login", (req, res) => {
-  const token = adminLogin(req.body?.password);
+app.post("/api/admin/login", async (req, res) => {
+  const token = await adminLogin(req.body?.password);
   if (!token) {
     res.status(401).json({ error: "invalid_password" });
     return;
@@ -45,9 +47,31 @@ app.post("/api/admin/login", (req, res) => {
 });
 
 app.post("/api/admin/logout", requireAdmin, (req, res) => {
-  const h = req.headers.authorization || "";
-  adminLogout(h.startsWith("Bearer ") ? h.slice(7).trim() : "");
+  adminLogout(bearerToken(req));
   res.json({ ok: true });
+});
+
+// 관리자 비밀번호 변경
+app.post("/api/admin/password", requireAdmin, async (req, res) => {
+  const result = await adminChangePassword(req.body?.oldPassword, req.body?.newPassword);
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+// ── 회원(비회원과 구분) 등록/로그인 ──
+app.post("/api/auth/register", async (req, res) => {
+  const r = await registerMember(req.body?.username, req.body?.password, req.body?.nickname);
+  if (!r.ok) { res.status(400).json({ error: r.error }); return; }
+  res.json(r.member);
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  const r = await loginMember(req.body?.username, req.body?.password);
+  if (!r.ok) { res.status(401).json({ error: r.error }); return; }
+  res.json(r.member);
 });
 
 // 설정 조회/변경/초기화 — 모두 관리자 토큰 필요
@@ -92,5 +116,11 @@ initializeSocket(io);
 httpServer.listen(PORT, () => {
   console.log(`Quiz server running on port ${PORT} (${isProd ? "production" : "development"})`);
 });
+
+// DB 초기화(테이블 생성/관리자 시드) 후 설정 로드. 실패해도 게임은 계속(게스트 플레이 가능)
+initDb()
+  .then(() => loadSettingsFromDb())
+  .then(() => console.log("DB ready: tables ensured, settings loaded"))
+  .catch((e) => console.error("DB init failed (게스트 플레이는 가능):", e.message));
 
 export { app, httpServer, io };

@@ -1,3 +1,5 @@
+import { getPool } from "../db/db";
+
 export interface BattleSettings {
   pressureFastRatio: number;
   pressureMidRatio: number;
@@ -220,6 +222,7 @@ export function updateAdminSettings(patch: Partial<AdminSettings>): AdminSetting
   if (patch.flow) updateFlowSettings(patch.flow);
   if (patch.bot) updateBotSettings(patch.bot);
   if (patch.item) updateItemSettings(patch.item);
+  void persistSettings();
   return getAdminSettings();
 }
 
@@ -228,5 +231,42 @@ export function resetAdminSettings(): AdminSettings {
   flowSettings = { ...DEFAULT_FLOW_SETTINGS };
   botSettings = { ...DEFAULT_BOT_SETTINGS };
   itemSettings = { ...DEFAULT_ITEM_SETTINGS };
+  void persistSettings();
   return getAdminSettings();
+}
+
+/* ── DB 영속화: 부팅 시 로드, 변경 시 저장(인메모리는 런타임 권위, DB는 영속) ── */
+
+// 로드한 설정을 인메모리에 반영(각 update*는 클램프만 하고 DB는 안 건드림)
+function hydrateSettings(data: Partial<AdminSettings>): void {
+  if (data.battle) updateBattleSettings(data.battle);
+  if (data.flow) updateFlowSettings(data.flow);
+  if (data.bot) updateBotSettings(data.bot);
+  if (data.item) updateItemSettings(data.item);
+}
+
+export async function loadSettingsFromDb(): Promise<void> {
+  try {
+    const [rows] = await getPool().query("SELECT data FROM app_settings WHERE id=1");
+    const row = (rows as Array<{ data: unknown }>)[0];
+    if (row?.data) {
+      const data = typeof row.data === "string" ? JSON.parse(row.data) : row.data;
+      hydrateSettings(data as Partial<AdminSettings>);
+    } else {
+      await persistSettings(); // 첫 부팅: 기본값을 DB에 기록
+    }
+  } catch (e) {
+    console.error("[settings] DB 로드 실패 — 기본값으로 진행:", (e as Error).message);
+  }
+}
+
+export async function persistSettings(): Promise<void> {
+  try {
+    await getPool().query(
+      "INSERT INTO app_settings (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data=VALUES(data)",
+      [JSON.stringify(getAdminSettings())],
+    );
+  } catch (e) {
+    console.error("[settings] DB 저장 실패:", (e as Error).message);
+  }
 }
