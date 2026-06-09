@@ -36,6 +36,9 @@ function startQuestionForRoom(io: Server, roomId: string): void {
 
   io.to(`room_${roomId}`).emit("questionStarted", data);
 
+  // 봇들이 이번 문제에 확률적으로 아이템 사용(정산 때 발동)
+  roomManager.maybeBotsUseItems(roomId);
+
   roomManager.startQuestionTimer(roomId, () => handleTimeUp(io, roomId));
 
   // 봇 답변 스케줄
@@ -257,6 +260,21 @@ export function initializeSocket(io: Server): void {
         roomManager.clearBotTimers(room.id);
         processQuestionResult(io, room.id);
       }
+    });
+
+    // ─── 아이템 사용 ───
+    socket.on("useItem", (data: { type?: string }) => {
+      if (!state.userId) return;
+      const type = data?.type;
+      if (type !== "heal" && type !== "curse" && type !== "destroy") return;
+      const room = roomManager.getUserRoom(state.userId);
+      if (!room) return;
+      const items = roomManager.useItem(room.id, state.userId, type);
+      // 성공/실패 무관하게 현재 인벤토리를 돌려보내 클라가 동기화
+      socket.emit("itemSync", {
+        items: items ?? room.scores.get(state.userId)?.items ?? { heal: 0, curse: 0, destroy: 0 },
+        used: items ? type : null,
+      });
     });
 
     // ─── 게임 나가기 ───

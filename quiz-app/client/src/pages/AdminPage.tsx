@@ -44,10 +44,18 @@ interface BotSettings {
   botMaxAccuracy: number;
 }
 
+interface ItemSettings {
+  startingItemCount: number;
+  itemHealAmount: number;
+  itemDestroyDamage: number;
+  botItemUseChance: number;
+}
+
 interface AdminSettings {
   battle: BattleSettings;
   flow: FlowSettings;
   bot: BotSettings;
+  item: ItemSettings;
 }
 
 type FieldMeta<T extends string> = Record<T, { label: string; hint: string; step: number; min: number; max: number }>;
@@ -95,6 +103,13 @@ const BOT_FIELD_LABELS: FieldMeta<keyof BotSettings> = {
   botMaxAccuracy: { label: "봇 최대 정답률", hint: "0~1 비율", step: 0.01, min: 0, max: 1 },
 };
 
+const ITEM_FIELD_LABELS: FieldMeta<keyof ItemSettings> = {
+  startingItemCount: { label: "아이템 시작 개수", hint: "종류별(힐/저주/파괴), 0=비활성", step: 1, min: 0, max: 9 },
+  itemHealAmount: { label: "💚 힐 회복량", hint: "가장 다친 팀원 회복 HP", step: 1, min: 0, max: 200 },
+  itemDestroyDamage: { label: "💥 파괴 피해", hint: "적 최저 HP 직접 피해", step: 1, min: 0, max: 200 },
+  botItemUseChance: { label: "봇 아이템 사용률", hint: "봇이 문제당 사용 확률 0~1", step: 0.05, min: 0, max: 1 },
+};
+
 const BATTLE_FIELD_ORDER: Array<keyof BattleSettings> = [
   "pressureFastRatio",
   "pressureMidRatio",
@@ -139,6 +154,13 @@ const BOT_FIELD_ORDER: Array<keyof BotSettings> = [
   "botMaxDelayRatio",
   "botMinAccuracy",
   "botMaxAccuracy",
+];
+
+const ITEM_FIELD_ORDER: Array<keyof ItemSettings> = [
+  "startingItemCount",
+  "itemHealAmount",
+  "itemDestroyDamage",
+  "botItemUseChance",
 ];
 
 function AdminPage() {
@@ -216,6 +238,10 @@ function AdminPage() {
 
   const updateBotField = (key: keyof BotSettings, value: number) => {
     setSettings((prev) => prev ? { ...prev, bot: { ...prev.bot, [key]: value } } : prev);
+  };
+
+  const updateItemField = (key: keyof ItemSettings, value: number) => {
+    setSettings((prev) => prev ? { ...prev, item: { ...prev.item, [key]: value } } : prev);
   };
 
   const save = async () => {
@@ -401,6 +427,27 @@ function AdminPage() {
                     step={meta.step}
                     value={settings.bot[key]}
                     onChange={(event) => updateBotField(key, Number(event.target.value))}
+                  />
+                </label>
+              );
+            })}
+          </div>
+
+          <h2>아이템 (힐 / 저주 / 파괴)</h2>
+          <div className={styles.grid}>
+            {ITEM_FIELD_ORDER.map((key) => {
+              const meta = ITEM_FIELD_LABELS[key];
+              return (
+                <label key={key} className={styles.field}>
+                  <span>{meta.label}</span>
+                  <small>{meta.hint}</small>
+                  <input
+                    type="number"
+                    min={meta.min}
+                    max={meta.max}
+                    step={meta.step}
+                    value={settings.item[key]}
+                    onChange={(event) => updateItemField(key, Number(event.target.value))}
                   />
                 </label>
               );

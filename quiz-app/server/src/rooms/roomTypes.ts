@@ -2,6 +2,9 @@ import { QuizQuestion } from "../quiz/quizTypes";
 
 export type RoomStatus = "PLAYING" | "RESULT";
 
+export type ItemType = "heal" | "curse" | "destroy";
+export type ItemInventory = Record<ItemType, number>;
+
 export interface User {
   socketId: string;
   userId: string;
@@ -42,6 +45,8 @@ export interface PlayerScore {
   maxCombo: number;
   downed: boolean;
   downedAtQuestion: number | null; // KO된 문제 인덱스 (이후 문제는 응답 불가 → 정답률 집계 제외)
+  items: ItemInventory;            // 보유 아이템(힐/저주/파괴)
+  silencedForQuestion: number | null; // 저주: 이 문제 인덱스에서 공격 봉인
 }
 
 export interface Room {
@@ -61,6 +66,7 @@ export interface Room {
   questionTimer: NodeJS.Timeout | null;
   botTimers: NodeJS.Timeout[];
   isSolo: boolean;
+  pendingItems: Array<{ userId: string; type: ItemType }>; // 이번 문제에 사용된 아이템(정산 때 해결)
 }
 
 export interface QuestionResultData {
@@ -112,6 +118,12 @@ export interface QuestionResultData {
     heals: Array<{ userId: string; nickname: string; amount: number }>; // 컴백 힐
     perfectDefenseTeams: number[];       // 적 공격을 완전 방어한 팀
     tkoWinnerTeam: number | null;        // 이 문제에서 한 팀 전멸 시 승리 팀
+    itemUses: Array<{                    // 이 문제에 사용된 아이템 (힐/저주/파괴)
+      userId: string; nickname: string;
+      type: ItemType;
+      targetUserId: string; targetNickname: string;
+      amount: number;                    // 힐 회복량 / 파괴 피해 (저주는 0)
+    }>;
   };
   isLastQuestion: boolean;
 }

@@ -1,11 +1,16 @@
 import {
-  Room, User, QueueEntry, PlayerAnswer, PlayerScore,
+  Room, User, QueueEntry, PlayerAnswer, PlayerScore, ItemType, ItemInventory,
   QuestionResultData, GameResultData, QuestionReviewData, LearningAnalysisData, TeamSummary,
 } from "./roomTypes";
 import { ClientQuestion } from "../quiz/quizTypes";
 import { getRandomQuestions, getGameSettings } from "../quiz/questions";
 import { generateRoomId, generateUserId } from "../utils/id";
-import { getBattleSettings, getBotSettings, getFlowSettings } from "../admin/settings";
+import { getBattleSettings, getBotSettings, getFlowSettings, getItemSettings } from "../admin/settings";
+
+function startingInventory(): ItemInventory {
+  const n = Math.max(0, getItemSettings().startingItemCount);
+  return { heal: n, curse: n, destroy: n };
+}
 
 /* ── 봇 이름 ── */
 
@@ -146,6 +151,7 @@ export class RoomManager {
       questionTimer: null,
       botTimers: [],
       isSolo,
+      pendingItems: [],
     };
 
     this.rooms.set(roomId, room);
@@ -158,6 +164,8 @@ export class RoomManager {
         userId: u.userId, nickname: u.nickname, isBot: false, teamId: u.teamId,
         correct: 0, wrong: 0, missed: 0, score: 0,
         hp: maxHp, maxHp, combo: 0, maxCombo: 0, downed: false, downedAtQuestion: null,
+        items: isSolo ? { heal: 0, curse: 0, destroy: 0 } : startingInventory(),
+        silencedForQuestion: null,
       });
     }
 
@@ -188,6 +196,8 @@ export class RoomManager {
         userId: botUser.userId, nickname: botUser.nickname, isBot: true, teamId: 0,
         correct: 0, wrong: 0, missed: 0, score: 0,
         hp: maxHp, maxHp, combo: 0, maxCombo: 0, downed: false, downedAtQuestion: null,
+        items: room.isSolo ? { heal: 0, curse: 0, destroy: 0 } : startingInventory(),
+        silencedForQuestion: null,
       });
     }
     if (!room.isSolo) this.assignTeams(room);
@@ -207,6 +217,41 @@ export class RoomManager {
       const sc = room.scores.get(u.userId);
       if (sc) sc.teamId = teamId;
     });
+  }
+
+  /* ── 아이템 ── */
+
+  /** 플레이어가 아이템 사용(문제 중). 인벤토리 차감 후 정산 대기열에 등록. 성공 시 갱신된 인벤토리 반환 */
+  useItem(roomId: string, userId: string, type: ItemType): ItemInventory | null {
+    const room = this.rooms.get(roomId);
+    if (!room || room.status !== "PLAYING" || room.isSolo) return null;
+    const score = room.scores.get(userId);
+    if (!score || score.downed) return null;
+    if ((score.items[type] ?? 0) <= 0) return null;
+    score.items[type] -= 1;
+    room.pendingItems.push({ userId, type });
+    return { ...score.items };
+  }
+
+  /** 봇들이 문제 시작 시 확률적으로 아이템 사용(팀이 다치면 힐 우선, 아니면 무작위) */
+  maybeBotsUseItems(roomId: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room || room.isSolo) return;
+    const s = getItemSettings();
+    if (s.startingItemCount <= 0 || s.botItemUseChance <= 0) return;
+    for (const u of room.users) {
+      if (!u.isBot) continue;
+      const sc = room.scores.get(u.userId);
+      if (!sc || sc.downed) continue;
+      if (Math.random() > s.botItemUseChance) continue;
+      const avail = (["heal", "curse", "destroy"] as ItemType[]).filter((t) => sc.items[t] > 0);
+      if (avail.length === 0) continue;
+      const mates = Array.from(room.scores.values()).filter((x) => x.teamId === sc.teamId && !x.downed);
+      const hurt = mates.some((x) => x.maxHp > 0 && x.hp < x.maxHp * 0.55);
+      const type = (hurt && sc.items.heal > 0) ? "heal" : avail[Math.floor(Math.random() * avail.length)];
+      sc.items[type] -= 1;
+      room.pendingItems.push({ userId: u.userId, type });
+    }
   }
 
   /* ── 게임 흐름 ── */
@@ -482,7 +527,8 @@ export class RoomManager {
     if (isTeamBattle) {
       // 각 팀의 공격력 산출 (쓰러지지 않은 정답자만)
       for (const teamId of teamIds) {
-        const attackers = allScores.filter((s) => s.teamId === teamId && !s.downed && answeredCorrect(s.userId));
+        // 저주받은(이 문제 공격 봉인) 사람은 공격에서 제외
+        const attackers = allScores.filter((s) => s.teamId === teamId && !s.downed && answeredCorrect(s.userId) && s.silencedForQuestion !== idx);
         let attack = 0;
         const attackerUserIds: string[] = [];
         const desperationUserIds: string[] = [];
@@ -500,7 +546,7 @@ export class RoomManager {
         // 전역 선공: 선공을 가진 팀만 선취 추가타
         let firstCorrectNickname: string | null = null;
         let combo = 0;
-        if (firstStrikeTeam === teamId && firstStrikeUserId) {
+        if (firstStrikeTeam === teamId && firstStrikeUserId && room.scores.get(firstStrikeUserId)?.silencedForQuestion !== idx) {
           attack += battle.firstStrikeDamage;
           firstCorrectNickname = nameOf(firstStrikeUserId);
           combo = room.scores.get(firstStrikeUserId)?.combo ?? 0;
@@ -548,7 +594,55 @@ export class RoomManager {
       }
     }
 
-    // ── TKO 판정: 한 팀이 전멸했는지 ──
+    // 이 문제에 봉인됐던 저주는 소비됨 → 해제
+    for (const s of allScores) if (s.silencedForQuestion === idx) s.silencedForQuestion = null;
+
+    // ── 아이템 정산: 문제 중 사용한 힐/저주/파괴를 자동 타겟으로 해결 ──
+    const heals: QuestionResultData["battle"]["heals"] = [];      // 컴백 힐(기존 FX)
+    const healByUser = new Map<string, number>();                  // 힐 합계(컴백+아이템) → results[].healed
+    const itemUses: QuestionResultData["battle"]["itemUses"] = [];
+    if (isTeamBattle && room.pendingItems.length > 0) {
+      const itemCfg = getItemSettings();
+      const lowestEnemy = (teamId: number) =>
+        allScores.filter((x) => x.teamId !== teamId && !x.downed).sort((a, b) => a.hp - b.hp)[0];
+      for (const use of room.pendingItems) {
+        const actor = room.scores.get(use.userId);
+        if (!actor) continue;
+        const actorName = nameOf(actor.userId);
+        if (use.type === "heal") {
+          if (itemCfg.itemHealAmount <= 0) continue;
+          const mates = allScores.filter((x) => x.teamId === actor.teamId && !x.downed);
+          const target = mates.filter((x) => x.hp < x.maxHp).sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]
+            ?? mates.find((x) => x.userId === actor.userId) ?? mates[0];
+          if (!target) continue;
+          const before = target.hp;
+          target.hp = Math.min(target.maxHp, target.hp + itemCfg.itemHealAmount);
+          const amount = target.hp - before;
+          if (amount > 0) healByUser.set(target.userId, (healByUser.get(target.userId) ?? 0) + amount);
+          itemUses.push({ userId: actor.userId, nickname: actorName, type: "heal", targetUserId: target.userId, targetNickname: nameOf(target.userId), amount });
+        } else if (use.type === "destroy") {
+          if (itemCfg.itemDestroyDamage <= 0) continue;
+          const target = lowestEnemy(actor.teamId);
+          if (!target) continue;
+          const newHp = Math.max(0, target.hp - itemCfg.itemDestroyDamage);
+          const amount = target.hp - newHp;
+          target.hp = newHp;
+          if (amount > 0) damageByUser.set(target.userId, (damageByUser.get(target.userId) ?? 0) + amount);
+          if (newHp === 0 && !target.downed) {
+            target.downed = true; target.downedAtQuestion = idx;
+            if (!koUserIds.includes(target.userId)) koUserIds.push(target.userId);
+          }
+          itemUses.push({ userId: actor.userId, nickname: actorName, type: "destroy", targetUserId: target.userId, targetNickname: nameOf(target.userId), amount });
+        } else { // curse → 적 최저 HP의 다음 문제 공격 봉인
+          const target = lowestEnemy(actor.teamId);
+          if (!target) continue;
+          target.silencedForQuestion = idx + 1;
+          itemUses.push({ userId: actor.userId, nickname: actorName, type: "curse", targetUserId: target.userId, targetNickname: nameOf(target.userId), amount: 0 });
+        }
+      }
+    }
+
+    // ── TKO 판정: 한 팀이 전멸했는지 (아이템 파괴로 인한 KO 포함) ──
     let tkoWinnerTeam: number | null = null;
     if (isTeamBattle) {
       const wiped = teamIds.filter((t) => {
@@ -559,7 +653,6 @@ export class RoomManager {
     }
 
     // ── 컴백 힐: 선공 팀의 총 HP가 약하면 가장 다친 생존 팀원을 소량 회복 ──
-    const heals: QuestionResultData["battle"]["heals"] = [];
     if (isTeamBattle && firstStrikeTeam !== null && battle.comebackHealAmount > 0) {
       const members = allScores.filter((s) => s.teamId === firstStrikeTeam);
       const totalHp = members.reduce((sum, s) => sum + s.hp, 0);
@@ -573,11 +666,13 @@ export class RoomManager {
           const before = wounded.hp;
           wounded.hp = Math.min(wounded.maxHp, wounded.hp + battle.comebackHealAmount);
           const amount = wounded.hp - before;
-          if (amount > 0) heals.push({ userId: wounded.userId, nickname: nameOf(wounded.userId), amount });
+          if (amount > 0) {
+            heals.push({ userId: wounded.userId, nickname: nameOf(wounded.userId), amount });
+            healByUser.set(wounded.userId, (healByUser.get(wounded.userId) ?? 0) + amount);
+          }
         }
       }
     }
-    const healByUser = new Map(heals.map((h) => [h.userId, h.amount]));
 
     // ── 결과 배열 ──
     const results: QuestionResultData["results"] = [];
@@ -625,7 +720,7 @@ export class RoomManager {
       nextConnection: q.nextConnection,
       results,
       scores,
-      battle: { koUserIds, teamAttacks, heals, perfectDefenseTeams, tkoWinnerTeam },
+      battle: { koUserIds, teamAttacks, heals, perfectDefenseTeams, tkoWinnerTeam, itemUses },
       isLastQuestion: idx >= room.questions.length - 1,
     };
   }
@@ -633,6 +728,7 @@ export class RoomManager {
   advanceToNextQuestion(roomId: string): boolean {
     const room = this.rooms.get(roomId);
     if (!room) return false;
+    room.pendingItems = []; // 다음 문제용으로 비움(이전 문제 정산에서 이미 소비)
     room.currentQuestionIndex++;
     if (room.currentQuestionIndex >= room.questions.length) {
       room.status = "RESULT";
@@ -911,6 +1007,7 @@ export class RoomManager {
         isBot: u.isBot,
         connected: u.connected,
         teamId: u.teamId,
+        items: room.scores.get(u.userId)?.items ?? { heal: 0, curse: 0, destroy: 0 },
       })),
       questionCount: room.questionCount,
       timeLimitSeconds: room.timeLimitSeconds,

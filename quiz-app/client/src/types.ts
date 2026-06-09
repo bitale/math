@@ -4,12 +4,16 @@ export interface GradeInfo {
   questionCount: number;
 }
 
+export type ItemType = "heal" | "curse" | "destroy";
+export type ItemInventory = Record<ItemType, number>;
+
 export interface RoomUser {
   userId: string;
   nickname: string;
   isBot: boolean;
   connected: boolean;
   teamId: number;
+  items?: ItemInventory;
 }
 
 export interface MatchInfo {
@@ -81,6 +85,12 @@ export interface QuestionResultData {
     heals: Array<{ userId: string; nickname: string; amount: number }>;
     perfectDefenseTeams: number[];
     tkoWinnerTeam: number | null;
+    itemUses: Array<{
+      userId: string; nickname: string;
+      type: ItemType;
+      targetUserId: string; targetNickname: string;
+      amount: number;
+    }>;
   };
   isLastQuestion: boolean;
 }
@@ -99,6 +109,7 @@ export interface PlayerScoreData {
   combo: number;
   maxCombo: number;
   downed: boolean;
+  items?: ItemInventory;
 }
 
 export interface TimePressureData {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import katex from "katex";
 import socket from "../socket";
-import type { ClientQuestion, QuestionResultData, MatchInfo, TimePressureData, AnswerCorrectData, PlayerScoreData } from "../types";
+import type { ClientQuestion, QuestionResultData, MatchInfo, TimePressureData, AnswerCorrectData, PlayerScoreData, ItemType, ItemInventory } from "../types";
 import BattleFX, { type BattleFXHandle } from "../components/BattleFX";
 import { sfx } from "../lib/sfx";
 import styles from "./QuizPage.module.css";
@@ -69,6 +69,14 @@ const FX_HEAL = "#9bf6ff";   // \uC544\uAD70 \uB370\uBBF8\uC9C0 \uC22B\uC790
 const FX_DESP = "#ff7a00";   // \uC704\uAE30 \uBC18\uACA9(\uADFC\uC131)
 const FX_HEALG = "#00ff95";  // \uCEF4\uBC31 \uD790(\uD68C\uBCF5)
 const FX_SHIELD = "#00e5ff"; // \uC644\uC804 \uBC29\uC5B4 \uBC29\uD328
+const FX_CURSE = "#a44bff";  // \uC800\uC8FC(\uBCF4\uB77C)
+
+const ITEM_META: Record<ItemType, { icon: string; label: string }> = {
+  heal: { icon: "\uD83D\uDC9A", label: "\uD790" },
+  curse: { icon: "\u2620\uFE0F", label: "\uC800\uC8FC" },
+  destroy: { icon: "\uD83D\uDCA5", label: "\uD30C\uAD34" },
+};
+const ITEM_ORDER: ItemType[] = ["heal", "curse", "destroy"];
 
 const DANGER_RATIO = 0.3;    // \uC774 HP \uBE44\uC728 \uC774\uD558 = \uC704\uD5D8
 
@@ -101,6 +109,7 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
   const [showChoices, setShowChoices] = useState(false);
   const [showTimePressure, setShowTimePressure] = useState(false);
   const [showCorrectToast, setShowCorrectToast] = useState(false);
+  const [inventory, setInventory] = useState<ItemInventory>({ heal: 0, curse: 0, destroy: 0 });
 
   /* ── 전투 FX 참조 ── */
   const fxRef = useRef<BattleFXHandle>(null);
@@ -362,6 +371,37 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       cursor += ta.targets.length * 150 + 240;
     }
 
+    /* 3.5) 아이템 연출 (힐/저주/파괴) */
+    questionResult.battle.itemUses.forEach((iu, i) => {
+      const fireAt = cursor + i * 200;
+      if (iu.type === "heal") {
+        at(fireAt, () => {
+          const pos = getChipCenter(iu.targetUserId) ?? getTeamCenter("mine") ?? screenMid();
+          fx.charge(pos.x, pos.y, FX_HEALG);
+          fx.ring(pos.x, pos.y, FX_HEALG, { power: 1.3 });
+          if (iu.amount > 0) fx.damageText(pos.x, pos.y, `+${iu.amount}`, { color: FX_HEALG, size: 28 });
+          if (iu.targetUserId === userId) fx.flash(FX_HEALG, 0.12);
+        });
+      } else if (iu.type === "destroy") {
+        at(fireAt, () => {
+          const pos = getChipCenter(iu.targetUserId) ?? getTeamCenter("enemy") ?? screenMid();
+          fx.flash(FX_FOE, 0.16);
+          fx.impact(pos.x, pos.y, { color: FX_FOE, power: 1.8 });
+          fx.damageText(pos.x, pos.y, `-${iu.amount}`, { color: "#ff5a78", size: 30 + Math.min(20, iu.amount) });
+          const isMeHit = iu.targetUserId === userId;
+          shakeScreen(isMeHit ? "shakeL" : "shakeM");
+        });
+      } else { // curse
+        at(fireAt, () => {
+          const pos = getChipCenter(iu.targetUserId) ?? getTeamCenter("enemy") ?? screenMid();
+          fx.bolt(pos.x, pos.y - 46, pos.x, pos.y, FX_CURSE);
+          fx.ring(pos.x, pos.y, FX_CURSE, { power: 1.4 });
+          fx.damageText(pos.x, pos.y - 6, "저주!", { color: FX_CURSE, size: 24 });
+        });
+      }
+    });
+    cursor += questionResult.battle.itemUses.length * 200;
+
     /* 4) 컴백 힐 */
     questionResult.battle.heals.forEach((hl, i) => {
       at(cursor + i * 170, () => {
@@ -415,6 +455,10 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       else if (myRes && myRes.selectedIndex !== null && !myRes.downed) sfx.play("wrong");
     });
     if ((myRes?.healed ?? 0) > 0) at(440, () => sfx.play("heal"));
+    const iu = questionResult.battle.itemUses;
+    if (iu.some((u) => u.type === "curse")) at(500, () => sfx.play("whoosh"));
+    if (iu.some((u) => u.type === "destroy")) at(540, () => sfx.play("hit"));
+    if (iu.some((u) => u.type === "heal")) at(580, () => sfx.play("heal"));
     if (questionResult.battle.koUserIds.length > 0) at(640, () => sfx.play("ko"));
     if (questionResult.battle.tkoWinnerTeam !== null) {
       const win = questionResult.battle.tkoWinnerTeam === myTeamId;
@@ -422,6 +466,23 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
     }
     return () => timers.forEach((t) => clearTimeout(t));
   }, [questionResult, userId, myTeamId]);
+
+  /* ════ 인벤토리: 결과/매치 정보에서 권위값 동기화 ════ */
+  useEffect(() => {
+    const fromScores = (questionResult?.scores ?? battleScores).find((s) => s.userId === userId)?.items;
+    const fromMatch = matchInfo?.users.find((u) => u.userId === userId)?.items;
+    const inv = fromScores ?? fromMatch;
+    if (inv) setInventory({ heal: inv.heal, curse: inv.curse, destroy: inv.destroy });
+  }, [questionResult, battleScores, matchInfo, userId]);
+
+  /* 서버가 아이템 사용 직후 보내는 인벤토리 동기화 */
+  useEffect(() => {
+    const onItemSync = (data: { items?: ItemInventory }) => {
+      if (data?.items) setInventory({ heal: data.items.heal, curse: data.items.curse, destroy: data.items.destroy });
+    };
+    socket.on("itemSync", onItemSync);
+    return () => { socket.off("itemSync", onItemSync); };
+  }, []);
 
   /* ════ 정답 적립 순간 스파크 (진행 중) ════ */
   useEffect(() => {
@@ -475,6 +536,23 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
       fxRef.current.impact(e.clientX, e.clientY, { color: CHOICE_HEX[index] ?? FX_ALLY, power: 0.7 });
     }
   }, [submitted, selectedIndex, question, getStat, userId]);
+
+  /* 아이템 사용: 낙관적 차감 후 emit, 서버 itemSync로 재동기화 */
+  const triggerItem = useCallback((type: ItemType) => {
+    if (getStat(userId).downed) return;
+    setInventory((prev) => {
+      if ((prev[type] ?? 0) <= 0) return prev;
+      socket.emit("useItem", { type });
+      sfx.play(type === "heal" ? "heal" : type === "destroy" ? "hit" : "whoosh");
+      return { ...prev, [type]: prev[type] - 1 };
+    });
+  }, [getStat, userId]);
+
+  /* 이 매치에서 아이템 기능이 켜져 있는지(시작 인벤토리 보유 여부) */
+  const itemsActive = useMemo(() => {
+    const init = matchInfo?.users.find((u) => u.userId === userId)?.items;
+    return isTeamBattle && !!init && (init.heal + init.curse + init.destroy) > 0;
+  }, [matchInfo, userId, isTeamBattle]);
 
   if (!question) {
     return (
@@ -723,6 +801,26 @@ function QuizPage({ question, questionResult, timeLeft, userId, connected, answe
           <LatexText text={question.question} />
         </div>
       </div>
+
+      {/* 아이템 바 (팀 배틀·진행 중) */}
+      {itemsActive && !isResultPhase && (
+        <div className={`${styles.itemBar} ${iAmDowned ? styles.itemBarLocked : ""}`}>
+          {ITEM_ORDER.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`${styles.itemBtn} ${styles[`item_${t}`]}`}
+              onClick={() => triggerItem(t)}
+              disabled={inventory[t] <= 0 || iAmDowned}
+              title={ITEM_META[t].label}
+            >
+              <span className={styles.itemIcon}>{ITEM_META[t].icon}</span>
+              <span className={styles.itemLabel}>{ITEM_META[t].label}</span>
+              <span className={styles.itemCount}>{inventory[t]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 선택지 */}
       <div className={`${styles.choices} ${showChoices ? styles.choicesVisible : ""} ${iAmDowned && !isResultPhase ? styles.choicesLocked : ""}`}>

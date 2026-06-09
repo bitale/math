@@ -44,10 +44,18 @@ export interface BotSettings {
   botMaxAccuracy: number;
 }
 
+export interface ItemSettings {
+  startingItemCount: number; // 종류별 시작 개수(힐/저주/파괴 각각). 0이면 아이템 비활성
+  itemHealAmount: number;    // 💚 힐: 가장 다친 우리 팀원 회복량
+  itemDestroyDamage: number; // 💥 파괴: 적 최저 HP에게 직접 피해
+  botItemUseChance: number;  // 봇이 문제당 아이템을 쓸 확률(0~1)
+}
+
 export interface AdminSettings {
   battle: BattleSettings;
   flow: FlowSettings;
   bot: BotSettings;
+  item: ItemSettings;
 }
 
 const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
@@ -93,9 +101,17 @@ const DEFAULT_BOT_SETTINGS: BotSettings = {
   botMaxAccuracy: 0.7,
 };
 
+const DEFAULT_ITEM_SETTINGS: ItemSettings = {
+  startingItemCount: 2,
+  itemHealAmount: 25,
+  itemDestroyDamage: 30,
+  botItemUseChance: 0.3,
+};
+
 let battleSettings: BattleSettings = { ...DEFAULT_BATTLE_SETTINGS };
 let flowSettings: FlowSettings = { ...DEFAULT_FLOW_SETTINGS };
 let botSettings: BotSettings = { ...DEFAULT_BOT_SETTINGS };
+let itemSettings: ItemSettings = { ...DEFAULT_ITEM_SETTINGS };
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -114,11 +130,16 @@ export function getBotSettings(): BotSettings {
   return { ...botSettings };
 }
 
+export function getItemSettings(): ItemSettings {
+  return { ...itemSettings };
+}
+
 export function getAdminSettings(): AdminSettings {
   return {
     battle: getBattleSettings(),
     flow: getFlowSettings(),
     bot: getBotSettings(),
+    item: getItemSettings(),
   };
 }
 
@@ -184,10 +205,21 @@ export function updateBotSettings(patch: Partial<BotSettings>): BotSettings {
   return getBotSettings();
 }
 
+export function updateItemSettings(patch: Partial<ItemSettings>): ItemSettings {
+  itemSettings = {
+    startingItemCount: Math.round(clampNumber(patch.startingItemCount, 0, 9, itemSettings.startingItemCount)),
+    itemHealAmount: clampNumber(patch.itemHealAmount, 0, 200, itemSettings.itemHealAmount),
+    itemDestroyDamage: clampNumber(patch.itemDestroyDamage, 0, 200, itemSettings.itemDestroyDamage),
+    botItemUseChance: clampNumber(patch.botItemUseChance, 0, 1, itemSettings.botItemUseChance),
+  };
+  return getItemSettings();
+}
+
 export function updateAdminSettings(patch: Partial<AdminSettings>): AdminSettings {
   if (patch.battle) updateBattleSettings(patch.battle);
   if (patch.flow) updateFlowSettings(patch.flow);
   if (patch.bot) updateBotSettings(patch.bot);
+  if (patch.item) updateItemSettings(patch.item);
   return getAdminSettings();
 }
 
@@ -195,5 +227,6 @@ export function resetAdminSettings(): AdminSettings {
   battleSettings = { ...DEFAULT_BATTLE_SETTINGS };
   flowSettings = { ...DEFAULT_FLOW_SETTINGS };
   botSettings = { ...DEFAULT_BOT_SETTINGS };
+  itemSettings = { ...DEFAULT_ITEM_SETTINGS };
   return getAdminSettings();
 }
