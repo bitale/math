@@ -34,8 +34,7 @@ export interface FlowSettings {
   resultDelayMs: number;
   finalResultDelayMs: number;
   disconnectGraceMs: number;
-  botFillCount: number;
-  maxPlayers: number;
+  matchTargetSize: number; // 한 매칭을 채울 총 인원(봇 포함). 짝수로 고정 → 항상 n:n
 }
 
 export interface BotSettings {
@@ -84,8 +83,7 @@ const DEFAULT_FLOW_SETTINGS: FlowSettings = {
   resultDelayMs: 3000,
   finalResultDelayMs: 3000,
   disconnectGraceMs: 5000,
-  botFillCount: 3,
-  maxPlayers: 6,
+  matchTargetSize: 4, // 기본 2:2
 };
 
 const DEFAULT_BOT_SETTINGS: BotSettings = {
@@ -168,8 +166,8 @@ export function updateFlowSettings(patch: Partial<FlowSettings>): FlowSettings {
     resultDelayMs: clampNumber(patch.resultDelayMs, 500, 15000, flowSettings.resultDelayMs),
     finalResultDelayMs: clampNumber(patch.finalResultDelayMs, 500, 15000, flowSettings.finalResultDelayMs),
     disconnectGraceMs: clampNumber(patch.disconnectGraceMs, 1000, 60000, flowSettings.disconnectGraceMs),
-    botFillCount: clampNumber(patch.botFillCount, 0, 10, flowSettings.botFillCount),
-    maxPlayers: clampNumber(patch.maxPlayers, 2, 12, flowSettings.maxPlayers),
+    // 짝수로 강제(내림) → 두 팀 균등(n:n) 보장
+    matchTargetSize: Math.max(2, Math.floor(clampNumber(patch.matchTargetSize, 2, 12, flowSettings.matchTargetSize) / 2) * 2),
   };
   return getFlowSettings();
 }

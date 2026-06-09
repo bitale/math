@@ -77,12 +77,29 @@ export class RoomManager {
   }
 
   /** 큐에서 2명 이상 모이면 매칭 성사. 매칭된 QueueEntry[] 반환, 아니면 null */
+  /** 큐에 목표 인원(matchTargetSize)이 다 차면 그만큼만 즉시 매칭(전원 사람, n:n). 아니면 null */
   tryMatch(gradeKey: string): QueueEntry[] | null {
     const queue = this.queues.get(gradeKey);
-    if (!queue || queue.length < 2) return null;
-    const matched = queue.splice(0, Math.min(queue.length, getFlowSettings().maxPlayers));
-    for (const e of matched) this.userQueueMap.delete(e.userId);
-    return matched;
+    const target = getFlowSettings().matchTargetSize;
+    if (!queue || queue.length < target) return null;
+    return this.takeFromQueue(gradeKey, target);
+  }
+
+  /** 큐 앞에서 최대 max명 인출(대기 중 사람들을 묶어 봇으로 채우기 위함) */
+  takeFromQueue(gradeKey: string, max: number): QueueEntry[] {
+    const queue = this.queues.get(gradeKey);
+    if (!queue || queue.length === 0 || max <= 0) return [];
+    const taken = queue.splice(0, Math.min(queue.length, max));
+    for (const e of taken) this.userQueueMap.delete(e.userId);
+    return taken;
+  }
+
+  /** 방 인원을 target까지 봇으로 채운다(부족분만). target은 짝수라 채운 뒤 항상 n:n */
+  fillBotsToTarget(roomId: string, target: number): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    const needed = Math.max(0, target - room.users.length);
+    if (needed > 0) this.addBots(roomId, needed);
   }
 
   getQueuePosition(userId: string): number {

@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import { initializeSocket } from "./socket";
 import { getAdminSettings, resetAdminSettings, updateAdminSettings } from "./admin/settings";
+import { adminLogin, adminLogout, requireAdmin } from "./admin/auth";
 
 const PORT = Number(process.env.PORT) || 3001;
 const isProd = process.env.NODE_ENV === "production";
@@ -33,19 +34,36 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.get("/api/admin/settings", (_req, res) => {
+// 관리자 로그인 (비보호) → 세션 토큰 발급
+app.post("/api/admin/login", (req, res) => {
+  const token = adminLogin(req.body?.password);
+  if (!token) {
+    res.status(401).json({ error: "invalid_password" });
+    return;
+  }
+  res.json({ token });
+});
+
+app.post("/api/admin/logout", requireAdmin, (req, res) => {
+  const h = req.headers.authorization || "";
+  adminLogout(h.startsWith("Bearer ") ? h.slice(7).trim() : "");
+  res.json({ ok: true });
+});
+
+// 설정 조회/변경/초기화 — 모두 관리자 토큰 필요
+app.get("/api/admin/settings", requireAdmin, (_req, res) => {
   res.json(getAdminSettings());
 });
 
-app.patch("/api/admin/settings/battle", (req, res) => {
+app.patch("/api/admin/settings/battle", requireAdmin, (req, res) => {
   res.json(updateAdminSettings({ battle: req.body ?? {} }));
 });
 
-app.patch("/api/admin/settings", (req, res) => {
+app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json(updateAdminSettings(req.body ?? {}));
 });
 
-app.post("/api/admin/settings/reset", (_req, res) => {
+app.post("/api/admin/settings/reset", requireAdmin, (_req, res) => {
   res.json(resetAdminSettings());
 });
 

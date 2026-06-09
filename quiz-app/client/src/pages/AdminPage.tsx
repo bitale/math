@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import styles from "./AdminPage.module.css";
 
 interface BattleSettings {
@@ -34,8 +34,7 @@ interface FlowSettings {
   resultDelayMs: number;
   finalResultDelayMs: number;
   disconnectGraceMs: number;
-  botFillCount: number;
-  maxPlayers: number;
+  matchTargetSize: number;
 }
 
 interface BotSettings {
@@ -86,8 +85,7 @@ const FLOW_FIELD_LABELS: FieldMeta<keyof FlowSettings> = {
   resultDelayMs: { label: "다음 문제 지연", hint: "결과 후 다음 문제 ms", step: 500, min: 500, max: 15000 },
   finalResultDelayMs: { label: "최종 결과 지연", hint: "마지막 결과 후 종료 ms", step: 500, min: 500, max: 15000 },
   disconnectGraceMs: { label: "재접속 유예", hint: "새로고침 대기 ms", step: 500, min: 1000, max: 60000 },
-  botFillCount: { label: "봇 투입 수", hint: "매칭 타임아웃 후", step: 1, min: 0, max: 10 },
-  maxPlayers: { label: "최대 인원", hint: "한 방 최대 참가자", step: 1, min: 2, max: 12 },
+  matchTargetSize: { label: "매칭 인원 (n:n)", hint: "봇 포함 총 인원·짝수 고정", step: 2, min: 2, max: 12 },
 };
 
 const BOT_FIELD_LABELS: FieldMeta<keyof BotSettings> = {
@@ -133,8 +131,7 @@ const FLOW_FIELD_ORDER: Array<keyof FlowSettings> = [
   "resultDelayMs",
   "finalResultDelayMs",
   "disconnectGraceMs",
-  "botFillCount",
-  "maxPlayers",
+  "matchTargetSize",
 ];
 
 const BOT_FIELD_ORDER: Array<keyof BotSettings> = [
@@ -145,19 +142,69 @@ const BOT_FIELD_ORDER: Array<keyof BotSettings> = [
 ];
 
 function AdminPage() {
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem("admin-token"));
   const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [status, setStatus] = useState("불러오는 중");
+  const [password, setPassword] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+
+  const clearAuth = () => {
+    sessionStorage.removeItem("admin-token");
+    setToken(null);
+    setSettings(null);
+  };
+
+  // 토큰을 실어 보내고, 401이면 자동 로그아웃
+  const authedFetch = async (url: string, init: RequestInit = {}) => {
+    const res = await fetch(url, {
+      ...init,
+      headers: { ...(init.headers || {}), Authorization: `Bearer ${token ?? ""}` },
+    });
+    if (res.status === 401) {
+      clearAuth();
+      setStatus("세션이 만료되었습니다. 다시 로그인하세요.");
+      throw new Error("unauthorized");
+    }
+    return res;
+  };
 
   const load = async () => {
-    const res = await fetch("/api/admin/settings");
+    const res = await authedFetch("/api/admin/settings");
     const data = await res.json();
     setSettings(data);
     setStatus("현재 서버 수치");
   };
 
   useEffect(() => {
+    if (!token) return;
     load().catch(() => setStatus("설정을 불러오지 못했습니다"));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const doLogin = async (e?: FormEvent) => {
+    e?.preventDefault();
+    setLoginErr("");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) { setLoginErr("비밀번호가 올바르지 않습니다."); return; }
+      const data = await res.json();
+      sessionStorage.setItem("admin-token", data.token);
+      setPassword("");
+      setStatus("불러오는 중");
+      setToken(data.token);
+    } catch {
+      setLoginErr("로그인 중 오류가 발생했습니다.");
+    }
+  };
+
+  const logout = async () => {
+    try { await authedFetch("/api/admin/logout", { method: "POST" }); } catch { /* noop */ }
+    clearAuth();
+  };
 
   const updateBattleField = (key: keyof BattleSettings, value: number) => {
     setSettings((prev) => prev ? { ...prev, battle: { ...prev.battle, [key]: value } } : prev);
@@ -174,23 +221,57 @@ function AdminPage() {
   const save = async () => {
     if (!settings) return;
     setStatus("저장 중");
-    const res = await fetch("/api/admin/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
-    const data = await res.json();
-    setSettings(data);
-    setStatus("저장됨");
+    try {
+      const res = await authedFetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const data = await res.json();
+      setSettings(data);
+      setStatus("저장됨");
+    } catch { /* 401 → 로그인 화면으로 */ }
   };
 
   const reset = async () => {
     setStatus("초기화 중");
-    const res = await fetch("/api/admin/settings/reset", { method: "POST" });
-    const data = await res.json();
-    setSettings(data);
-    setStatus("기본값으로 초기화됨");
+    try {
+      const res = await authedFetch("/api/admin/settings/reset", { method: "POST" });
+      const data = await res.json();
+      setSettings(data);
+      setStatus("기본값으로 초기화됨");
+    } catch { /* 401 → 로그인 화면으로 */ }
   };
+
+  // ── 로그인 화면 ──
+  if (!token) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>관리자</p>
+            <h1>로그인</h1>
+          </div>
+          <a className={styles.playLink} href="/">게임으로</a>
+        </section>
+        <form className={styles.loginCard} onSubmit={doLogin}>
+          <label className={styles.field}>
+            <span>비밀번호</span>
+            <small>관리자 비밀번호를 입력하세요</small>
+            <input
+              type="password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호"
+            />
+          </label>
+          {loginErr && <p className={styles.loginErr}>{loginErr}</p>}
+          <button type="submit">로그인</button>
+        </form>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -199,7 +280,10 @@ function AdminPage() {
           <p className={styles.eyebrow}>관리자</p>
           <h1>퀴즈 배틀 설정</h1>
         </div>
-        <a className={styles.playLink} href="/">게임으로</a>
+        <div className={styles.headerActions}>
+          <button type="button" className={styles.logoutBtn} onClick={logout}>로그아웃</button>
+          <a className={styles.playLink} href="/">게임으로</a>
+        </div>
       </section>
 
       <section className={styles.summary}>

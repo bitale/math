@@ -166,16 +166,18 @@ export function initializeSocket(io: Server): void {
       // 대기
       socket.emit("matchmaking", { status: "searching", gradeKey });
 
-      // 30초 타임아웃 → 봇으로 시작
+      // 타임아웃 → 대기 중인 사람들을 묶고 봇으로 목표 인원(n:n)까지 채워 시작
       const timer = setTimeout(() => {
         matchTimeouts.delete(state.userId!);
         if (!roomManager.isInQueue(state.userId!)) return;
 
-        const entry = roomManager.leaveQueue(state.userId!);
-        if (!entry) return;
+        const target = getFlowSettings().matchTargetSize;
+        const group = roomManager.takeFromQueue(gradeKey, target);
+        if (group.length === 0) return;
+        for (const e of group) cancelMatchTimeout(e.userId);
 
-        const room = roomManager.createMatchRoom(gradeKey, [entry], false);
-        roomManager.addBots(room.id, getFlowSettings().botFillCount);
+        const room = roomManager.createMatchRoom(gradeKey, group, false);
+        roomManager.fillBotsToTarget(room.id, target);
         startMatchedGame(io, room.id);
       }, getFlowSettings().matchTimeoutMs);
       matchTimeouts.set(state.userId, timer);
